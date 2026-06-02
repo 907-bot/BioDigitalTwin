@@ -91,12 +91,16 @@ def root():
                 "patient_counterfactual": "POST /phase11/patient-counterfactual",
                 "ate": "POST /phase11/ate",
             },
+            "phase_12": {
+                "trials_search": "GET /phase12/trials/search",
+                "trial_detail": "GET /phase12/trials/{nct_id}",
+            },
         },
     }
 
 @app.get("/health")
 def health():
-    return {"status": "healthy", "phase": "1+2+3+4+5+8+9+10+11"}
+    return {"status": "healthy", "phase": "1+2+3+4+5+8+9+10+11+12"}
 
 @app.post("/generate-patients")
 def generate_patients(n: int = Query(500, ge=10, le=5000)):
@@ -706,4 +710,11 @@ app.include_router(pkpd_router)
 # =============================================================================
 from app.uq import uq_router  # noqa: E402
 app.include_router(uq_router)
+
+
+# =============================================================================
+# Phase 12 — Clinical Trials (ClinicalTrials.gov v2)
+# =============================================================================
+from app.trials import trials_router  # noqa: E402
+app.include_router(trials_router)
 
