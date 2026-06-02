@@ -1,0 +1,26 @@
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pandas==2.2.2
+numpy==2.1.1
+python-multipart==0.0.9
+pydantic==2.9.2
+
+# Phase 1
+sqlalchemy==2.0.35
+alembic==1.13.3
+psycopg2-binary==2.9.9
+python-dotenv==1.0.1
+
+# Phase 2 - Graph
+torch==2.4.1
+torch-geometric==2.6.1
+neo4j==5.25.0
+scikit-learn==1.5.2
+
+# Phase 3 - Dynamics
+snntorch==0.7.0
+scipy==1.14.1
+
+# Synthetic data (Phase 1 quality upgrade)
+sdv==1.11.0
+ctgan==0.10.1
