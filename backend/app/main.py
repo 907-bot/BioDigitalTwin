@@ -87,12 +87,16 @@ def root():
                 "pd": "POST /phase10/pd/simulate",
                 "population": "POST /phase10/population",
             },
+            "phase_11": {
+                "patient_counterfactual": "POST /phase11/patient-counterfactual",
+                "ate": "POST /phase11/ate",
+            },
         },
     }
 
 @app.get("/health")
 def health():
-    return {"status": "healthy", "phase": "1+2+3+4+5+8+9+10"}
+    return {"status": "healthy", "phase": "1+2+3+4+5+8+9+10+11"}
 
 @app.post("/generate-patients")
 def generate_patients(n: int = Query(500, ge=10, le=5000)):
@@ -695,4 +699,11 @@ app.include_router(ddi_router)
 # =============================================================================
 from app.pkpd import pkpd_router  # noqa: E402
 app.include_router(pkpd_router)
+
+
+# =============================================================================
+# Phase 11 — Uncertainty Quantification
+# =============================================================================
+from app.uq import uq_router  # noqa: E402
+app.include_router(uq_router)
 
