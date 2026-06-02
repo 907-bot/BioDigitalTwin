@@ -80,12 +80,19 @@ def root():
                 "check": "POST /phase9/check",
                 "pair": "POST /phase9/pair",
             },
+            "phase_10": {
+                "drugs": "GET /phase10/drugs",
+                "drug": "GET /phase10/drugs/{name}",
+                "pk": "POST /phase10/pk/simulate",
+                "pd": "POST /phase10/pd/simulate",
+                "population": "POST /phase10/population",
+            },
         },
     }
 
 @app.get("/health")
 def health():
-    return {"status": "healthy", "phase": "1+2+3+4+5+8+9"}
+    return {"status": "healthy", "phase": "1+2+3+4+5+8+9+10"}
 
 @app.post("/generate-patients")
 def generate_patients(n: int = Query(500, ge=10, le=5000)):
@@ -681,4 +688,11 @@ app.include_router(pgx_router)
 # =============================================================================
 from app.ddi import ddi_router  # noqa: E402
 app.include_router(ddi_router)
+
+
+# =============================================================================
+# Phase 10 — PK/PD
+# =============================================================================
+from app.pkpd import pkpd_router  # noqa: E402
+app.include_router(pkpd_router)
 
