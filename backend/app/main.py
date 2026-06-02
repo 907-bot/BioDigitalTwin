@@ -108,12 +108,20 @@ def root():
                 "validate_batch": "POST /phase14/validate-batch",
                 "rdkit_status": "GET /phase14/rdkit-version",
             },
+            "phase_15": {
+                "registry_list": "GET /phase15/registry/diseases",
+                "registry_get": "GET /phase15/registry/diseases/{key}",
+                "registry_create": "POST /phase15/registry/diseases",
+                "registry_update": "PUT /phase15/registry/diseases/{key}",
+                "registry_delete": "DELETE /phase15/registry/diseases/{key}",
+                "registry_summary": "GET /phase15/registry/summary",
+            },
         },
     }
 
 @app.get("/health")
 def health():
-    return {"status": "healthy", "phase": "1+2+3+4+5+8+9+10+11+12+13+14"}
+    return {"status": "healthy", "phase": "1+2+3+4+5+8+9+10+11+12+13+14+15"}
 
 @app.post("/generate-patients")
 def generate_patients(n: int = Query(500, ge=10, le=5000)):
@@ -744,4 +752,11 @@ app.include_router(regulatory_router)
 # =============================================================================
 from app.wetlab import wetlab_router  # noqa: E402
 app.include_router(wetlab_router)
+
+
+# =============================================================================
+# Phase 15 — Disease Registry (Postgres-backed)
+# =============================================================================
+from app.registry import registry_router  # noqa: E402
+app.include_router(registry_router)
 
