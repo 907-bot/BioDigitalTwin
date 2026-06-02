@@ -23,6 +23,26 @@ async function post<T>(path: string, body: any): Promise<T> {
   return r.json();
 }
 
+async function put<T>(path: string, body: any): Promise<T> {
+  const r = await fetch(`${BASE}/api${path}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+  if (!r.ok) throw new Error(`${r.status} ${r.statusText}: ${await r.text()}`);
+  return r.json();
+}
+
+async function del<T>(path: string): Promise<T> {
+  const r = await fetch(`${BASE}/api${path}`, {
+    method: "DELETE",
+    cache: "no-store",
+  });
+  if (!r.ok) throw new Error(`${r.status} ${r.statusText}: ${await r.text()}`);
+  return r.json();
+}
+
 // --- types ---
 export type Patient = {
   patient_id: string; age: number; gender: string; bmi: number;
@@ -115,4 +135,58 @@ export const api = {
                     `/phase5/history?session_id=${session_id}`),
   chatReset:     (session_id: string) =>
                   post<{ status: string }>(`/phase5/reset?session_id=${session_id}`, {}),
+
+  // ---- Phase 8 — Pharmacogenomics ----
+  pgxGenes:      () => get<{ genes: string[] }>("/phase8/genes"),
+  pgxRegistry:   (drug?: string) => get<any>(`/phase8/registry${drug ? `?drug=${drug}` : ""}`),
+  pgxProfile:    (pid: string) => get<any>(`/phase8/patients/${pid}/pgx`),
+  pgxCheck:      (patient_id: string, drugs: string[]) =>
+                  post<any>("/phase8/patients/pgx-check", { patient_id, drugs }),
+
+  // ---- Phase 9 — DDI ----
+  ddiCheck:      (drugs: string[]) => post<any>("/phase9/check", { drugs }),
+  ddiPair:       (drug_a: string, drug_b: string) => post<any>("/phase9/pair", { drug_a, drug_b }),
+  ddiRules:      () => get<any>("/phase9/rules"),
+  ddiGraph:      () => get<any>("/phase9/graph"),
+
+  // ---- Phase 10 — PK/PD ----
+  pkpdDrugs:     () => get<any>("/phase10/drugs"),
+  pkpdDrug:      (name: string) => get<any>(`/phase10/drugs/${name}`),
+  pkpdSimulate:  (body: any) => post<any>("/phase10/pk/simulate", body),
+  pkpdSim:       (body: any) => post<any>("/phase10/pd/simulate", body),
+  pkpdPop:       (body: any) => post<any>("/phase10/population", body),
+
+  // ---- Phase 11 — UQ ----
+  uqCounterfactual: (body: any) => post<any>("/phase11/patient-counterfactual", body),
+  uqAte:           (treatment: string, outcome: string,
+                    common_causes?: string[], n_bootstrap = 50) =>
+                    post<any>(`/phase11/ate?treatment=${treatment}&outcome=${outcome}`
+                              + `&n_bootstrap=${n_bootstrap}`
+                              + (common_causes?.length ? `&common_causes=${common_causes.join(",")}` : ""),
+                              {}),
+
+  // ---- Phase 12 — Trials ----
+  trialsSearch:  (q: string, by: "condition" | "drug" = "condition", max = 10) =>
+                  get<any>(`/phase12/trials/search?q=${encodeURIComponent(q)}&by=${by}&max=${max}`),
+  trialDetail:   (nct_id: string) => get<any>(`/phase12/trials/${nct_id}`),
+
+  // ---- Phase 13 — Regulatory ----
+  regProfile:    (drug: string) => get<any>(`/phase13/drugs/${drug}/regulatory`),
+  regBlackBox:   (drug: string) => get<any>(`/phase13/drugs/${drug}/black-box`),
+  regFaers:      (drug: string) => get<any>(`/phase13/drugs/${drug}/faers`),
+  regApproval:   (drug: string) => get<any>(`/phase13/drugs/${drug}/approval`),
+  regRxNorm:     (name: string) => get<any>(`/phase13/rxnorm/normalize?name=${encodeURIComponent(name)}`),
+  regSnapshot:   () => get<any>("/phase13/registry/snapshot"),
+
+  // ---- Phase 14 — Wet-Lab ----
+  wetlabValidate:    (smiles: string) => post<any>("/phase14/validate", { smiles }),
+  wetlabRDKit:       () => get<any>("/phase14/rdkit-version"),
+
+  // ---- Phase 15 — Registry ----
+  registryList:      () => get<any>("/phase15/registry/diseases"),
+  registryGet:       (key: string) => get<any>(`/phase15/registry/diseases/${key}`),
+  registryCreate:    (body: any) => post<any>("/phase15/registry/diseases", body),
+  registryUpdate:    (key: string, body: any) => put<any>(`/phase15/registry/diseases/${key}`, body),
+  registryDelete:    (key: string) => del<any>(`/phase15/registry/diseases/${key}`),
+  registrySummary:   () => get<any>("/phase15/registry/summary"),
 };

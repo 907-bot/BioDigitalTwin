@@ -1,41 +1,47 @@
+"use client";
 import "./globals.css";
 import Link from "next/link";
+import { useState } from "react";
 import type { Metadata } from "next";
+import { Sidebar } from "@/components/Sidebar";
 
 export const metadata: Metadata = {
   title: "Bio-Digital Twin",
-  description: "Phases 1-6 — synthetic patients, GNN, dynamics, causality, agent",
+  description: "Phases 1-15 — synthetic patients, GNN, dynamics, causality, agent, drug discovery",
 };
 
-const nav = [
-  { href: "/",                label: "Home" },
-  { href: "/cohort",          label: "Cohort" },
-  { href: "/simulate",        label: "Simulate" },
-  { href: "/counterfactual",  label: "Counterfactual" },
-  { href: "/causal",          label: "Causal" },
-  { href: "/chat",            label: "Chat" },
-];
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
   return (
     <html lang="en">
       <body className="min-h-screen">
-        <header className="sticky top-0 z-50 bg-bg/80 backdrop-blur border-b border-border">
-          <div className="max-w-6xl mx-auto px-6 py-3 flex items-center gap-6">
+        <Sidebar open={open} onClose={() => setOpen(false)} />
+        <header className="sticky top-0 z-30 bg-bg/80 backdrop-blur border-b border-border">
+          <div className="max-w-6xl mx-auto px-6 py-3 flex items-center gap-4">
+            <button
+              onClick={() => setOpen(true)}
+              className="text-muted hover:text-text text-lg"
+              aria-label="Open menu"
+            >
+              ≡
+            </button>
             <Link href="/" className="font-semibold text-text text-sm">
               <span className="text-teal">●</span> Bio-Digital Twin
-              <span className="ml-2 text-xs text-muted font-normal">v0.6</span>
+              <span className="ml-2 text-xs text-muted font-normal">v0.8</span>
             </Link>
-            <nav className="flex gap-1 text-sm">
-              {nav.map((n) => (
-                <Link key={n.href} href={n.href}
-                      className="px-3 py-1.5 rounded-md text-muted
-                                 hover:text-text hover:bg-panel2 transition-colors">
-                  {n.label}
-                </Link>
-              ))}
+            <nav className="hidden md:flex gap-1 text-sm ml-4">
+              <Link href="/cohort"        className="px-3 py-1.5 rounded-md text-muted hover:text-text hover:bg-panel2">Cohort</Link>
+              <Link href="/simulate"      className="px-3 py-1.5 rounded-md text-muted hover:text-text hover:bg-panel2">Simulate</Link>
+              <Link href="/causal"        className="px-3 py-1.5 rounded-md text-muted hover:text-text hover:bg-panel2">Causal</Link>
+              <Link href="/chat"          className="px-3 py-1.5 rounded-md text-muted hover:text-text hover:bg-panel2">Chat</Link>
+              <span className="text-muted text-xs self-center mx-1">·</span>
+              <Link href="/pharmacogenomics" className="px-3 py-1.5 rounded-md text-teal/80 hover:text-teal hover:bg-teal/10 text-xs">PGx</Link>
+              <Link href="/polypharmacy"  className="px-3 py-1.5 rounded-md text-teal/80 hover:text-teal hover:bg-teal/10 text-xs">DDI</Link>
+              <Link href="/pkpd"          className="px-3 py-1.5 rounded-md text-teal/80 hover:text-teal hover:bg-teal/10 text-xs">PK/PD</Link>
+              <Link href="/trials"        className="px-3 py-1.5 rounded-md text-teal/80 hover:text-teal hover:bg-teal/10 text-xs">Trials</Link>
+              <Link href="/regulatory"    className="px-3 py-1.5 rounded-md text-teal/80 hover:text-teal hover:bg-teal/10 text-xs">Regulatory</Link>
             </nav>
-            <div className="ml-auto text-xs text-muted">
+            <div className="ml-auto text-xs text-muted hidden md:block">
               API: <code className="text-text">/api</code>{" "}
               <a href="http://localhost:8000/docs" target="_blank"
                  className="text-teal hover:underline">docs ↗</a>
@@ -44,7 +50,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </header>
         <main className="max-w-6xl mx-auto px-6 py-6">{children}</main>
         <footer className="max-w-6xl mx-auto px-6 py-6 text-xs text-muted">
-          Built with FastAPI · Next.js · Ollama · PyTorch Geometric
+          Bio-Digital Twin v0.8 · 15 phases · FastAPI + Next.js + Ollama + DoWhy + RDKit
         </footer>
       </body>
     </html>
