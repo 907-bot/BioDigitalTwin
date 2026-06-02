@@ -255,3 +255,119 @@ def get_or_build_cohort_graph(df: pd.DataFrame) -> CohortGraph:
 def reset_cohort_graph() -> None:
     global _GRAPH
     _GRAPH = None
+
+
+def load_patients() -> pd.DataFrame:
+    import os
+    path = "data/synthetic_patients.csv"
+    if not os.path.exists(path):
+        path = "backend/data/synthetic_patients.csv"
+        if not os.path.exists(path):
+            raise FileNotFoundError("Synthetic patient data not found. Run POST /generate-patients first.")
+    return pd.read_csv(path)
+
+
+def compute_risk_flags(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    df["risk_score"] = df.apply(compute_risk_score, axis=1)
+    df["risk_label"] = df["risk_score"].apply(_risk_label)
+    return df
+
+
+def compute_similarity_matrix(df: pd.DataFrame) -> np.ndarray:
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.metrics.pairwise import cosine_similarity
+    
+    cols = ["age", "bmi", "hr", "hrv", "spo2", "glucose", "systolic_bp", "diastolic_bp"]
+    available_cols = [c for c in cols if c in df.columns]
+    features = df[available_cols].fillna(df[available_cols].mean())
+    
+    scaler = StandardScaler()
+    scaled_features = scaler.fit_transform(features)
+    
+    sim_matrix = cosine_similarity(scaled_features)
+    return sim_matrix
+
+
+def build_edge_list(sim_matrix: np.ndarray, patient_ids: list[str], threshold: float, max_neighbors: int) -> list[tuple[str, str, float]]:
+    edges = []
+    n = len(patient_ids)
+    for i in range(n):
+        sims = sim_matrix[i]
+        sorted_indices = np.argsort(sims)[::-1]
+        
+        count = 0
+        for j in sorted_indices:
+            if i == j:
+                continue
+            sim_val = float(sims[j])
+            if sim_val < threshold:
+                break
+            
+            edges.append((patient_ids[i], patient_ids[j], sim_val))
+            count += 1
+            if count >= max_neighbors:
+                break
+    return edges
+
+
+def neo4j_available() -> bool:
+    from app.graph.neo4j_client import neo4j_client
+    return neo4j_client.available
+
+
+def get_driver():
+    from neo4j import GraphDatabase
+    from app.core.config import settings
+    return GraphDatabase.driver(
+        settings.NEO4J_URI,
+        auth=(settings.NEO4J_USER, settings.NEO4J_PASSWORD),
+        connection_timeout=3,
+    )
+
+
+def write_patients_to_neo4j(driver, df: pd.DataFrame) -> None:
+    with driver.session() as session:
+        session.run("MATCH (p:Patient) DETACH DELETE p")
+        
+        for _, row in df.iterrows():
+            risk_val = float(compute_risk_score(row))
+            session.run(
+                """
+                MERGE (p:Patient {id: $pid})
+                SET p.patient_id = $pid,
+                    p.age = $age,
+                    p.gender = $gender,
+                    p.bmi = $bmi,
+                    p.risk_score = $risk,
+                    p.risk_label = $label
+                """,
+                {
+                    "pid": row["patient_id"],
+                    "age": int(row["age"]),
+                    "gender": row["gender"],
+                    "bmi": float(row["bmi"]),
+                    "risk": risk_val,
+                    "label": _risk_label(risk_val)
+                }
+            )
+
+
+def write_edges_to_neo4j(driver, edges: list, df: pd.DataFrame) -> None:
+    with driver.session() as session:
+        session.run("MATCH ()-[r:SIMILAR_TO]->() DELETE r")
+        
+        for src, dst, sim in edges:
+            session.run(
+                """
+                MATCH (a:Patient {id: $src})
+                MATCH (b:Patient {id: $dst})
+                MERGE (a)-[r:SIMILAR_TO]->(b)
+                SET r.similarity = $sim
+                """,
+                {
+                    "src": src,
+                    "dst": dst,
+                    "sim": float(sim)
+                }
+            )

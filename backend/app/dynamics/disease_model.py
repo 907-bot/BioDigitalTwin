@@ -96,7 +96,7 @@ DISEASE_FORCINGS: dict[str, Forcing] = {
     "copd":         Forcing("COPD",                   forcing_copd),
 }
 
-ALL_BIOMARKER_NAMES = [b.name for b in BIOMARKERS]
+ALL_BIOMARKER_NAMES = [b.id for b in BIOMARKERS]
 
 
 # --- disease attractor definition ------------------------------------
@@ -161,7 +161,7 @@ class DiseaseSimulator:
         deltas = []
         for name in self.biomarker_names:
             v = state.get(name, self.baseline[name])
-            b = next(b for b in BIOMARKERS if b.name == name)
+            b = next(b for b in BIOMARKERS if b.id == name)
             deltas.append(abs(_normalise(v, b.healthy_lo, b.healthy_hi)))
         return float(np.clip(np.mean(deltas), 0.0, 1.0))
 
