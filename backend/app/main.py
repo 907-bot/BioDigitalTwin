@@ -1,5 +1,5 @@
 """
-Bio-Digital Twin  —  Phase 1 + Phase 2 + Phase 3 + Phase 4 + Phase 5 API
+Bio-Digital Twin  —  Phases 1-8 API
 """
 from fastapi import FastAPI, HTTPException, Query, BackgroundTasks, Body
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,7 +13,7 @@ from typing import Optional
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Bio-Digital Twin API", version="0.5.0")
+app = FastAPI(title="Bio-Digital Twin API", version="0.8.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 os.makedirs("data", exist_ok=True)
 os.makedirs("models", exist_ok=True)
@@ -68,12 +68,18 @@ def root():
                 "reset": "POST /phase5/reset",
                 "history": "GET /phase5/history",
             },
+            "phase_8": {
+                "genes": "GET /phase8/genes",
+                "registry": "GET /phase8/registry",
+                "patient_pgx": "GET /phase8/patients/{patient_id}/pgx",
+                "pgx_check": "POST /phase8/patients/pgx-check",
+            },
         },
     }
 
 @app.get("/health")
 def health():
-    return {"status": "healthy", "phase": "1+2+3+4+5"}
+    return {"status": "healthy", "phase": "1+2+3+4+5+8"}
 
 @app.post("/generate-patients")
 def generate_patients(n: int = Query(500, ge=10, le=5000)):
@@ -656,4 +662,10 @@ def phase5_history(session_id: str = Query("default")):
             "turns": len(mem.messages) // 2,
             "messages": mem.as_list()}
 
+
+# =============================================================================
+# Phase 8 — Pharmacogenomics
+# =============================================================================
+from app.pgx import pgx_router  # noqa: E402
+app.include_router(pgx_router)
 
