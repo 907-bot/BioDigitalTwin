@@ -24,7 +24,21 @@ class BatchValidateRequest(BaseModel):
 @router.post("/validate")
 def validate(req: ValidateRequest):
     """Full wet-lab readiness report for a single SMILES."""
-    return validate_lead(req.smiles)
+    result = validate_lead(req.smiles)
+    if result.get("valid_smiles", True):
+        from app.narrative import wetlab as wetlab_narrative
+        result["narrative"] = wetlab_narrative.narrate_validation(
+            smiles=req.smiles, name=None,
+            score=result.get("overall_score", 0),
+            verdict=result.get("verdict", "unknown"),
+            properties=result.get("properties", {}),
+            drug_likeness=result.get("drug_likeness", {}),
+            filters=result.get("filters", {}),
+            dose_response=result.get("dose_response", {}),
+            targets=result.get("probable_targets", []),
+            toxicity=result.get("toxicity_alerts", []),
+        )
+    return result
 
 
 @router.post("/validate-batch")

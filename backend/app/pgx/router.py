@@ -21,6 +21,7 @@ from .registry import (
     lookup_drug,
     lookup_gene,
 )
+from app.narrative import pgx as pgx_narrative
 
 logger = logging.getLogger(__name__)
 
@@ -89,16 +90,18 @@ def patient_pgx(patient_id: str):
     pgx = get_patient_pgx(patient_id, PATIENTS_CSV)
     if pgx is None:
         raise HTTPException(404, f"patient '{patient_id}' not found")
+    genes = [
+        {
+            "gene": g,
+            "status": pgx.genotypes.get(g, "EM").value,
+            "activity": pgx.activity_for(g),
+        }
+        for g in PHARMACOGENES
+    ]
     return {
         "patient_id": patient_id,
-        "genes": [
-            {
-                "gene": g,
-                "status": pgx.genotypes.get(g, "EM").value,
-                "activity": pgx.activity_for(g),
-            }
-            for g in PHARMACOGENES
-        ],
+        "genes": genes,
+        "narrative": pgx_narrative.narrate_profile(patient_id, genes),
     }
 
 
@@ -126,7 +129,7 @@ def pgx_check(req: PGxCheckRequest):
             status = pgx.genotypes.get(r.gene)
             if status is None or status.value == "EM":
                 continue
-            warnings.append({
+            warning = {
                 "drug": r.drug,
                 "gene": r.gene,
                 "patient_status": status.value,
@@ -135,7 +138,14 @@ def pgx_check(req: PGxCheckRequest):
                 "is_prodrug": r.is_prodrug,
                 "impact_factor": r.impact_factor[status.value],
                 "clinical_note": r.pm_clinical if status.value == "PM" else r.um_clinical,
-            })
+            }
+            warning["narrative"] = pgx_narrative.narrate_warning(
+                drug=r.drug, gene=r.gene, patient_status=status.value,
+                severity=r.severity, is_prodrug=r.is_prodrug,
+                impact=r.impact_factor[status.value],
+                clinical_note=warning["clinical_note"],
+            )
+            warnings.append(warning)
 
     # sort by severity
     sev_order = {"critical": 0, "major": 1, "moderate": 2, "minor": 3}
@@ -147,4 +157,9 @@ def pgx_check(req: PGxCheckRequest):
         "warnings": warnings,
         "n_warnings": len(warnings),
         "highest_severity": warnings[0]["severity"] if warnings else "none",
+        "narrative": pgx_narrative.narrate_check(
+            patient_id=req.patient_id, drugs=req.drugs,
+            warnings=warnings,
+            highest_severity=warnings[0]["severity"] if warnings else None,
+        ),
     }

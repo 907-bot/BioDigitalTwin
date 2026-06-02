@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from .database import DDI_RULES, SEVERITY_RANK, find_direct, find_pair, normalize
 from .graph import CYP_GRAPH, detect_transitive_interactions, get_role
+from app.narrative import ddi as ddi_narrative
 
 logger = logging.getLogger(__name__)
 
@@ -141,6 +142,11 @@ def check_polypharmacy(req: DDICheckRequest):
         "overall_severity": overall,
         "interactions": interactions,
         "per_drug_summary": drug_summary,
+        "narrative": ddi_narrative.narrate_check(
+            drugs=n_dedup, interactions=interactions, overall_severity=overall,
+            n_direct=sum(1 for i in interactions if not i.get("inferred")),
+            n_inferred=sum(1 for i in interactions if i.get("inferred")),
+        ),
     }
 
 
@@ -156,6 +162,11 @@ def check_pair(req: DDIPairRequest):
     direct = find_pair(a, b)
     if direct:
         r = min(direct, key=lambda r: SEVERITY_RANK.get(r.severity, 9))
+        pair_dict = {
+            "drug_a": a, "drug_b": b, "severity": r.severity,
+            "mechanism": r.mechanism, "clinical_effect": r.clinical_effect,
+            "cpic_or_fda": r.cpic_or_fda, "on_set": r.on_set,
+        }
         return {
             "drug_a": a,
             "drug_b": b,
@@ -164,7 +175,32 @@ def check_pair(req: DDIPairRequest):
             "mechanism": r.mechanism,
             "clinical_effect": r.clinical_effect,
             "source": r.cpic_or_fda,
+            "narrative": ddi_narrative.narrate_pair(a, b, pair_dict, None),
         }
+    # Try transitive
+    transitive = detect_transitive_interactions([a, b])
+    if transitive:
+        t = min(transitive, key=lambda t: SEVERITY_RANK.get(t["severity"], 9))
+        return {
+            "drug_a": a,
+            "drug_b": b,
+            "interaction_found": True,
+            "severity": t["severity"],
+            "mechanism": t["mechanism"],
+            "clinical_effect": t["clinical_effect"],
+            "source": "transitive_inference",
+            "narrative": ddi_narrative.narrate_pair(a, b, None, [a, t.get("enzyme", "?"), b]),
+        }
+    return {
+        "drug_a": a,
+        "drug_b": b,
+        "interaction_found": False,
+        "severity": "none",
+        "mechanism": None,
+        "clinical_effect": None,
+        "source": None,
+        "narrative": ddi_narrative.narrate_pair(a, b, None, None),
+    }
     # Try transitive
     transitive = detect_transitive_interactions([a, b])
     if transitive:

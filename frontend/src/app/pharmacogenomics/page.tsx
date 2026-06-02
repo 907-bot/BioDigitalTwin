@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { Card, ErrorBox } from "@/components/Panels";
+import { Narrative, NarrativeList } from "@/components/Narrative";
 
 export default function PharmacogenomicsPage() {
   const [pid, setPid] = useState("P000001");
@@ -57,6 +58,14 @@ export default function PharmacogenomicsPage() {
 
       {err && <ErrorBox err={err} />}
 
+      {profile?.narrative && (
+        <Narrative data={profile.narrative} title="PGx profile" />
+      )}
+
+      {check?.narrative && (
+        <Narrative data={check.narrative} title="Drug-gene check" />
+      )}
+
       {profile && (
         <Card>
           <h2 className="text-sm font-semibold text-text mb-3">
@@ -101,36 +110,49 @@ export default function PharmacogenomicsPage() {
           {check.warnings.length === 0 ? (
             <div className="text-sm text-muted">No pharmacogenomic warnings for this regimen.</div>
           ) : (
-            <table className="w-full text-sm">
-              <thead className="text-xs text-muted">
-                <tr>
-                  <th className="text-left py-1">Drug</th>
-                  <th className="text-left py-1">Gene</th>
-                  <th className="text-left py-1">Status</th>
-                  <th className="text-left py-1">Severity</th>
-                  <th className="text-left py-1">Impact</th>
-                  <th className="text-left py-1">Clinical note</th>
-                </tr>
-              </thead>
-              <tbody>
-                {check.warnings.map((w: any, i: number) => (
-                  <tr key={i} className="border-t border-border">
-                    <td className="py-2 font-mono">{w.drug}</td>
-                    <td className="py-2 font-mono">{w.gene}</td>
-                    <td className="py-2">{w.patient_status}</td>
-                    <td className="py-2">
-                      <span className={
-                        "chip " +
-                        (w.severity === "critical" ? "chip-warn" :
-                         w.severity === "major" ? "chip-warn" : "chip-info")
-                      }>{w.severity}</span>
-                    </td>
-                    <td className="py-2 font-mono">{w.impact_factor.toFixed(2)}×</td>
-                    <td className="py-2 text-muted text-xs">{w.clinical_note}</td>
+            <>
+              <table className="w-full text-sm mb-4">
+                <thead className="text-xs text-muted">
+                  <tr>
+                    <th className="text-left py-1">Drug</th>
+                    <th className="text-left py-1">Gene</th>
+                    <th className="text-left py-1">Status</th>
+                    <th className="text-left py-1">Severity</th>
+                    <th className="text-left py-1">Impact</th>
+                    <th className="text-left py-1">Clinical note</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {check.warnings.map((w: any, i: number) => (
+                    <tr key={i} className="border-t border-border">
+                      <td className="py-2 font-mono">{w.drug}</td>
+                      <td className="py-2 font-mono">{w.gene}</td>
+                      <td className="py-2">{w.patient_status}</td>
+                      <td className="py-2">
+                        <span className={
+                          "chip " +
+                          (w.severity === "critical" ? "chip-warn" :
+                           w.severity === "major" ? "chip-warn" : "chip-info")
+                        }>{w.severity}</span>
+                      </td>
+                      <td className="py-2 font-mono">{w.impact_factor.toFixed(2)}×</td>
+                      <td className="py-2 text-muted text-xs">{w.clinical_note}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="mt-4 space-y-2">
+                <h3 className="text-xs font-medium text-muted uppercase tracking-wider mb-2">
+                  What this means
+                </h3>
+                <NarrativeList
+                  items={check.warnings.map((w: any) => ({
+                    label: `${w.drug} · ${w.gene}`,
+                    narrative: w.narrative,
+                  }))}
+                />
+              </div>
+            </>
           )}
         </Card>
       )}

@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { Card, ErrorBox, Live } from "@/components/Panels";
+import { Narrative } from "@/components/Narrative";
 
 const PRESETS = [
   { name: "Aspirin",      smiles: "CC(=O)Oc1ccccc1C(=O)O" },
@@ -147,6 +148,10 @@ export default function WetlabPage() {
       </Card>
 
       {err && <ErrorBox err={err} />}
+
+      {result?.narrative && (
+        <Narrative data={result.narrative} title="Molecule validation" />
+      )}
 
       {result && (
         <>

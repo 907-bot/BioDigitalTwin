@@ -27,6 +27,9 @@ async def trials_search(q: str = Query(..., description="condition or drug"),
         "by": by,
         "n_results": len(results),
         "trials": results,
+        "narrative": __import__("app.narrative", fromlist=["trials"]).trials.narrate_search(
+            query=q, by=by, n_results=len(results), trials=results,
+        ),
     }
 
 

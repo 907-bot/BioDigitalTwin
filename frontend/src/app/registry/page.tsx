@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { Card, ErrorBox, Live } from "@/components/Panels";
+import { Narrative } from "@/components/Narrative";
 
 const EMPTY = {
   key: "",
@@ -86,6 +87,10 @@ export default function RegistryPage() {
       </div>
 
       {err && <ErrorBox err={err} />}
+
+      {summary?.narrative && (
+        <Narrative data={summary.narrative} title="Registry summary" />
+      )}
 
       {summary && (
         <Card>

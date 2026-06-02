@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { Card, ErrorBox, Live } from "@/components/Panels";
+import { Narrative } from "@/components/Narrative";
 
 export default function TrialsPage() {
   const [q, setQ] = useState("metformin type 2 diabetes");
@@ -82,6 +83,10 @@ export default function TrialsPage() {
       </Card>
 
       {err && <ErrorBox err={err} />}
+
+      {results?.narrative && (
+        <Narrative data={results.narrative} title="Trial search" />
+      )}
 
       {results && (
         <Card>

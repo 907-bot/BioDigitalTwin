@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { Card, ErrorBox, Live } from "@/components/Panels";
+import { Narrative } from "@/components/Narrative";
 
 export default function PKPDPage() {
   const [drug, setDrug] = useState("warfarin");
@@ -141,6 +142,13 @@ export default function PKPDPage() {
       </Card>
 
       {err && <ErrorBox err={err} />}
+
+      {pk?.narrative && (
+        <Narrative data={pk.narrative} title="PK simulation" />
+      )}
+      {pd?.narrative && (
+        <Narrative data={pd.narrative} title="PD response" />
+      )}
 
       {m && (
         <Card>

@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { Card, ErrorBox, Live } from "@/components/Panels";
+import { Narrative } from "@/components/Narrative";
 
 export default function RegulatoryPage() {
   const [drug, setDrug] = useState("warfarin");
@@ -56,6 +57,10 @@ export default function RegulatoryPage() {
       </Card>
 
       {err && <ErrorBox err={err} />}
+
+      {profile?.narrative && (
+        <Narrative data={profile.narrative} title="Regulatory profile" />
+      )}
 
       {profile && (
         <>

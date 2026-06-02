@@ -54,11 +54,20 @@ def uq_patient_counterfactual(req: UQRequest):
     observed["bmi"] = float(r["bmi"])
     observed["age"] = float(r["age"])
 
-    return bootstrap_patient_counterfactual(
+    result = bootstrap_patient_counterfactual(
         df, observed=observed,
         treatment=req.treatment, value=req.value, outcome=req.outcome,
         n_bootstrap=req.n_bootstrap, confidence=req.confidence, seed=req.seed,
     )
+    from app.narrative import uq as uq_narrative
+    result["narrative"] = uq_narrative.narrate_counterfactual(
+        patient_id=req.patient_id, treatment=req.treatment, biomarker="glucose",
+        value=req.value, outcome=req.outcome,
+        effect=result["effect"],
+        direction_stability=result["direction_stability"],
+        n_bootstrap=req.n_bootstrap,
+    )
+    return result
 
 
 @router.post("/ate")

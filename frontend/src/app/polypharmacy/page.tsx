@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { Card, ErrorBox } from "@/components/Panels";
+import { Narrative, NarrativeList } from "@/components/Narrative";
 
 const SEV_BG: Record<string, string> = {
   contraindicated: "bg-rose/20 border-rose/40",
@@ -81,6 +82,10 @@ export default function PolypharmacyPage() {
 
       {err && <ErrorBox err={err} />}
 
+      {result?.narrative && (
+        <Narrative data={result.narrative} title="Polypharmacy summary" />
+      )}
+
       {result && (
         <>
           <Card>
@@ -148,26 +153,33 @@ export default function PolypharmacyPage() {
 
           <Card>
             <h2 className="text-sm font-semibold text-text mb-3">Interactions detail</h2>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {result.interactions.map((i: any, idx: number) => (
-                <div key={idx} className={"p-3 rounded border " + (SEV_BG[i.severity] || SEV_BG.none)}>
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="font-mono">{i.drug_a}</span>
-                    <span className="text-muted">+</span>
-                    <span className="font-mono">{i.drug_b}</span>
-                    <span className={SEV_TEXT[i.severity] + " ml-auto text-xs"}>
-                      {i.severity.toUpperCase()}
-                    </span>
-                    {i.inferred && (
-                      <span className="text-[10px] text-muted bg-bg2 px-1.5 py-0.5 rounded">
-                        inferred
+                <div key={idx} className={"rounded border " + (SEV_BG[i.severity] || SEV_BG.none)}>
+                  <div className="p-3">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="font-mono">{i.drug_a}</span>
+                      <span className="text-muted">+</span>
+                      <span className="font-mono">{i.drug_b}</span>
+                      <span className={SEV_TEXT[i.severity] + " ml-auto text-xs"}>
+                        {i.severity.toUpperCase()}
                       </span>
-                    )}
+                      {i.inferred && (
+                        <span className="text-[10px] text-muted bg-bg2 px-1.5 py-0.5 rounded">
+                          inferred
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted mt-1">
+                      <span className="text-text">{i.mechanism}</span> — {i.clinical_effect}
+                    </div>
+                    <div className="text-[10px] text-muted mt-1">source: {i.source}</div>
                   </div>
-                  <div className="text-xs text-muted mt-1">
-                    <span className="text-text">{i.mechanism}</span> — {i.clinical_effect}
-                  </div>
-                  <div className="text-[10px] text-muted mt-1">source: {i.source}</div>
+                  {i.narrative && (
+                    <div className="px-3 pb-3">
+                      <Narrative data={i.narrative} title="" collapsible={false} />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

@@ -44,7 +44,12 @@ class DiseaseUpdate(BaseModel):
 def list_registry():
     """List all diseases in the registry."""
     items = list_diseases()
-    return {"n": len(items), "diseases": items}
+    return {"n": len(items), "diseases": items,
+            "narrative": __import__("app.narrative", fromlist=["registry"]).registry.narrate_summary(
+                {"n_diseases": len(items), "n_target_proteins": sum(len(d.get("target_proteins") or []) for d in items),
+                 "total_clinical_trials": sum(d.get("clinical_trials") or 0 for d in items),
+                 "by_unmet_need": {}},
+            )}
 
 
 @router.get("/registry/diseases/{key}")
@@ -52,6 +57,7 @@ def get_one(key: str):
     d = get_disease(key)
     if not d:
         raise HTTPException(404, f"disease '{key}' not found")
+    d["narrative"] = __import__("app.narrative", fromlist=["registry"]).registry.narrate_disease(d)
     return d
 
 

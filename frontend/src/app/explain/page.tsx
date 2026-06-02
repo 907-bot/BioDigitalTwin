@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { Card, ErrorBox, Live } from "@/components/Panels";
+import { Narrative } from "@/components/Narrative";
 
 type Mode = "counterfactual" | "ddi" | "pk" | "pgx" | "patient";
 
@@ -150,6 +151,10 @@ export default function XAIPage() {
       </Card>
 
       {err && <ErrorBox err={err} />}
+
+      {result?.narrative && (
+        <Narrative data={result.narrative} title="Explanation" />
+      )}
 
       {result && (
         <>

@@ -62,6 +62,21 @@ async def drug_regulatory(drug_name: str):
             "total_reports":  faers_summary.get("total_reports"),
             "top_reactions":  top_ae,
         },
+        "narrative": __import__("app.narrative", fromlist=["regulatory"]).regulatory.narrate_profile(d, {
+            "orange_book": {"entries": [
+                {"ingredient": e.ingredient, "trade_name": e.trade_name,
+                 "applicant": e.applicant, "approval_date": e.approval_date}
+                for e in ob
+            ]},
+            "safety": ({"black_box_warnings": safety.black_box,
+                        "contraindications": safety.contraindications,
+                        "common_adverse_events": safety.common_aes,
+                        "pregnancy_category": safety.pregnancy,
+                        "typical_dose": safety.typical_dose,
+                        "notes": safety.notes} if safety else None),
+            "faers": {"total_reports": faers_summary.get("total_reports", 0),
+                      "top_reactions": top_ae},
+        }),
     }
 
 

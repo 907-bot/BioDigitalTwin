@@ -152,7 +152,46 @@ def _format_pk_result(res: PKResult, drug: str, regimen: DosingRegimen,
             for t, c in zip(t_dense[::step], c_dense[::step])
         ],
         "validation_checks": _validate_pk(res, regimen),
+        "narrative": _narrate_pk(drug, regimen, cov, res),
     }
+
+
+def _narrate_pk(drug: str, regimen: DosingRegimen, cov: PatientCovariates, res) -> dict:
+    from app.narrative import pkpd as pkpd_narrative
+    from app.pkpd.compartments import (
+        cockcroft_gault_egfr, allometric_scale, adjust_for_renal,
+    )
+    crcl = cockcroft_gault_egfr(age=cov.age, weight=cov.weight, sex=cov.sex,
+                                 serum_cr=cov.serum_creatinine)
+    cl_renal = res.clearance
+    cl_full = rec_pk_clearance(drug)
+    renal_factor = cl_renal / cl_full if cl_full else 1.0
+    adjustments = {
+        "crcl_ml_min": crcl,
+        "renal_factor": renal_factor,
+        "allometric_factor": allometric_scale(1.0, 70, cov.weight),
+    }
+    metrics = {
+        "cmax": res.cmax, "cmax_ss": res.cmax_ss,
+        "tmax": res.tmax, "half_life_h": res.half_life,
+        "clearance_L_per_h": res.clearance,
+        "auc_0_inf": res.auc_0_inf,
+        "accumulation_ratio": res.accumulation_ratio or 1.0,
+        "time_to_steady_state_h": res.time_to_steady_state_h or 0,
+    }
+    return pkpd_narrative.narrate_pk(
+        drug=drug, dose_mg=regimen.dose_mg, n_doses=regimen.n_doses,
+        interval_h=regimen.interval_h,
+        patient={"age": cov.age, "weight_kg": cov.weight, "sex": cov.sex,
+                 "serum_creatinine_mg_dl": cov.serum_creatinine},
+        metrics=metrics, adjustments=adjustments,
+        validation=[{"status": c["status"]} for c in _validate_pk(res, regimen)],
+    )
+
+
+def rec_pk_clearance(drug: str) -> float:
+    from .registry import get_drug
+    return get_drug(drug).pk.CL
 
 
 def _validate_pk(res: PKResult, regimen: DosingRegimen) -> list[dict]:
@@ -252,7 +291,26 @@ def pd_simulate(req: PDRequest):
             for t, c, e in zip(pk_res.times_h[::step],
                                 pk_res.c_central[::step], effect[::step])
         ],
+        "narrative": _narrate_pd(rec.name, target, req.baseline_value, req.concentration_mg_L,
+                                 rec.pd.model.value,
+                                 round(float(effect[pk_res.c_central.argmax()]), 3),
+                                 round(float(effect.min() if rec.effect_direction == "decrease"
+                                             else effect.max()), 3),
+                                 round(float(effect.max() if rec.effect_direction == "decrease"
+                                             else effect.min()), 3),
+                                 rec.pd.target_unit),
     }
+
+
+def _narrate_pd(drug: str, biomarker: str, baseline: float, peak_mg_L: float,
+                pd_model: str, effect_at_tmax: float, max_eff: float,
+                min_eff: float, pd_unit: str) -> dict:
+    from app.narrative import pkpd as pkpd_narrative
+    return pkpd_narrative.narrate_pd(
+        drug=drug, biomarker=biomarker, baseline=baseline, peak_mg_L=peak_mg_L,
+        pd_model=pd_model, effect_at_tmax=effect_at_tmax,
+        max_effect=max_eff, min_effect=min_eff, pd_unit=pd_unit,
+    )
 
 
 class PopRequest(BaseModel):

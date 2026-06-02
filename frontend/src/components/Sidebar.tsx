@@ -63,7 +63,7 @@ export function Sidebar({
           <span className="text-teal text-lg">●</span>
           <div>
             <div className="text-text font-semibold text-sm">Bio-Digital Twin</div>
-            <div className="text-xs text-muted">v0.8 · 15 phases</div>
+            <div className="text-xs text-muted">v0.9 · 16 phases</div>
           </div>
           <button
             onClick={onClose}

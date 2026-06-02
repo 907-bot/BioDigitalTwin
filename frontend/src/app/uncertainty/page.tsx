@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { Card, ErrorBox, Live } from "@/components/Panels";
+import { Narrative } from "@/components/Narrative";
 
 export default function UncertaintyPage() {
   const [pid, setPid] = useState("P000001");
@@ -82,6 +83,10 @@ export default function UncertaintyPage() {
       </Card>
 
       {err && <ErrorBox err={err} />}
+
+      {cf?.narrative && (
+        <Narrative data={cf.narrative} title="Uncertainty analysis" />
+      )}
 
       {e && (
         <>
