@@ -34,3 +34,6 @@ httpx==0.27.2
 # Synthetic data (Phase 1 quality upgrade)
 sdv==1.11.0
 ctgan>=0.9.0,<0.10
+
+# Phase 8-14 — Drug discovery & advancements
+rdkit-pypi==2022.9.5

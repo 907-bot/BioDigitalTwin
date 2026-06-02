@@ -103,12 +103,17 @@ def root():
                 "rxnorm": "GET /phase13/rxnorm/normalize",
                 "orange_book_snapshot": "GET /phase13/registry/snapshot",
             },
+            "phase_14": {
+                "validate": "POST /phase14/validate",
+                "validate_batch": "POST /phase14/validate-batch",
+                "rdkit_status": "GET /phase14/rdkit-version",
+            },
         },
     }
 
 @app.get("/health")
 def health():
-    return {"status": "healthy", "phase": "1+2+3+4+5+8+9+10+11+12+13"}
+    return {"status": "healthy", "phase": "1+2+3+4+5+8+9+10+11+12+13+14"}
 
 @app.post("/generate-patients")
 def generate_patients(n: int = Query(500, ge=10, le=5000)):
@@ -732,4 +737,11 @@ app.include_router(trials_router)
 # =============================================================================
 from app.regulatory import regulatory_router  # noqa: E402
 app.include_router(regulatory_router)
+
+
+# =============================================================================
+# Phase 14 — Wet-Lab Validation (PAINS/Brenk/SAS/IC50/tox)
+# =============================================================================
+from app.wetlab import wetlab_router  # noqa: E402
+app.include_router(wetlab_router)
 
