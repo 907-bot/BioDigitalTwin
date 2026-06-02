@@ -19,6 +19,7 @@ const phases = [
   { n: 13, t: "Regulatory",                  d: "FDA + OpenFDA FAERS + RxNorm + warnings" },
   { n: 14, t: "Wet-Lab",                     d: "PAINS/Brenk/SAS/IC50/tox on candidate SMILES" },
   { n: 15, t: "Disease Registry",            d: "Postgres-backed CRUD for the disease catalog" },
+  { n: 16, t: "Explainable AI",               d: "SHAP-lite + reasoning chains across all phases" },
 ];
 
 const linkFor = (n: number) => {
@@ -37,6 +38,7 @@ const linkFor = (n: number) => {
     case 13: return "/regulatory";
     case 14: return "/wetlab";
     case 15: return "/registry";
+    case 16: return "/explain";
     default: return "/";
   }
 };

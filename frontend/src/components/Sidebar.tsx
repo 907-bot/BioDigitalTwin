@@ -29,6 +29,7 @@ export const MODULES: Module[] = [
   { n: 13, title: "Regulatory",           blurb: "FDA + FAERS + RxNorm",   href: "/regulatory",       group: "advancements" },
   { n: 14, title: "Wet-Lab",              blurb: "PAINS/SAS/IC50",         href: "/wetlab",           group: "advancements" },
   { n: 15, title: "Disease Registry",     blurb: "Postgres-backed CRUD",   href: "/registry",         group: "advancements" },
+  { n: 16, title: "Explainable AI",       blurb: "Reasoning chains + SHAP", href: "/explain",          group: "advancements" },
 ];
 
 export function Sidebar({

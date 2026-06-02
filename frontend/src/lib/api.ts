@@ -189,4 +189,14 @@ export const api = {
   registryUpdate:    (key: string, body: any) => put<any>(`/phase15/registry/diseases/${key}`, body),
   registryDelete:    (key: string) => del<any>(`/phase15/registry/diseases/${key}`),
   registrySummary:   () => get<any>("/phase15/registry/summary"),
+
+  // ---- Phase 16 — Explainable AI ----
+  xaiMethods:             () => get<any>("/phase16/methods"),
+  xaiCounterfactual:      (body: any) => post<any>("/phase16/explain/counterfactual", body),
+  xaiDDI:                 (drug_a: string, drug_b: string) =>
+                          post<any>("/phase16/explain/ddi", { drug_a, drug_b }),
+  xaiPK:                  (body: any) => post<any>("/phase16/explain/pk", body),
+  xaiPGx:                 (patient_id: string, drug: string) =>
+                          post<any>("/phase16/explain/pgx", { patient_id, drug }),
+  xaiPatient:             (body: any) => post<any>("/phase16/explain/patient", body),
 };

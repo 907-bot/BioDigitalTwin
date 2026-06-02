@@ -13,7 +13,7 @@ from typing import Optional
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Bio-Digital Twin API", version="0.8.0")
+app = FastAPI(title="Bio-Digital Twin API", version="0.9.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 os.makedirs("data", exist_ok=True)
 os.makedirs("models", exist_ok=True)
@@ -121,7 +121,7 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"status": "healthy", "phase": "1+2+3+4+5+8+9+10+11+12+13+14+15"}
+    return {"status": "healthy", "phase": "1+2+3+4+5+8+9+10+11+12+13+14+15+16"}
 
 @app.post("/generate-patients")
 def generate_patients(n: int = Query(500, ge=10, le=5000)):
@@ -759,4 +759,11 @@ app.include_router(wetlab_router)
 # =============================================================================
 from app.registry import registry_router  # noqa: E402
 app.include_router(registry_router)
+
+
+# =============================================================================
+# Phase 16 — Explainable AI (XAI) — composes all phases into reasoning chains
+# =============================================================================
+from app.xai import router as xai_router  # noqa: E402
+app.include_router(xai_router)
 

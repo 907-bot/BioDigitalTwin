@@ -50,3 +50,22 @@ export function ErrorBox({ err }: { err: unknown }) {
     </div>
   );
 }
+
+export function Live({ ts, label = "Live" }: { ts: number; label?: string }) {
+  const ago = (() => {
+    const s = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+    if (s < 60) return `${s}s ago`;
+    if (s < 3600) return `${Math.floor(s/60)}m ago`;
+    return `${Math.floor(s/3600)}h ago`;
+  })();
+  return (
+    <div className="flex items-center gap-2 text-xs">
+      <span className="relative flex h-2 w-2">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald opacity-75"></span>
+        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald"></span>
+      </span>
+      <span className="text-emerald font-medium">{label}</span>
+      <span className="text-muted">{ago}</span>
+    </div>
+  );
+}
