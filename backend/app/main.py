@@ -95,12 +95,20 @@ def root():
                 "trials_search": "GET /phase12/trials/search",
                 "trial_detail": "GET /phase12/trials/{nct_id}",
             },
+            "phase_13": {
+                "drug_regulatory": "GET /phase13/drugs/{drug_name}/regulatory",
+                "black_box": "GET /phase13/drugs/{drug_name}/black-box",
+                "faers": "GET /phase13/drugs/{drug_name}/faers",
+                "approval": "GET /phase13/drugs/{drug_name}/approval",
+                "rxnorm": "GET /phase13/rxnorm/normalize",
+                "orange_book_snapshot": "GET /phase13/registry/snapshot",
+            },
         },
     }
 
 @app.get("/health")
 def health():
-    return {"status": "healthy", "phase": "1+2+3+4+5+8+9+10+11+12"}
+    return {"status": "healthy", "phase": "1+2+3+4+5+8+9+10+11+12+13"}
 
 @app.post("/generate-patients")
 def generate_patients(n: int = Query(500, ge=10, le=5000)):
@@ -717,4 +725,11 @@ app.include_router(uq_router)
 # =============================================================================
 from app.trials import trials_router  # noqa: E402
 app.include_router(trials_router)
+
+
+# =============================================================================
+# Phase 13 — Regulatory (FDA, FAERS, RxNorm)
+# =============================================================================
+from app.regulatory import regulatory_router  # noqa: E402
+app.include_router(regulatory_router)
 
