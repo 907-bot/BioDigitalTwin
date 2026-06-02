@@ -89,9 +89,16 @@ def narrate_pk(drug: str, dose_mg: float, n_doses: int, interval_h: float,
 def narrate_pd(drug: str, biomarker: str, baseline: float, peak_mg_L: float,
                pd_model: str, effect_at_tmax: float, max_effect: float,
                min_effect: float, pd_unit: str) -> Dict[str, str]:
-    delta = min_effect - max_effect
-    pct = (delta / min_effect * 100) if min_effect != 0 else 0
-    direction = "decreased" if delta > 0 else "increased"
+    # In the router: for "decrease" direction min_effect=baseline(highest),
+    # max_effect=drug nadir(lowest). For "increase" it's reversed.
+    # We treat whichever is the larger absolute value as the baseline and
+    # the other as the post-drug value.
+    is_decrease = min_effect > max_effect
+    start_val = min_effect if is_decrease else max_effect
+    end_val = max_effect if is_decrease else min_effect
+    delta = start_val - end_val
+    pct = (delta / start_val * 100) if start_val != 0 else 0
+    direction = "decreased" if is_decrease else "increased"
 
     if abs(pct) < 5:
         lay = (f"At the predicted blood level of {peak_mg_L:.2f} mg/L, {drug} has "
@@ -100,28 +107,28 @@ def narrate_pd(drug: str, biomarker: str, baseline: float, peak_mg_L: float,
         risk = "low"
     elif abs(pct) < 20:
         lay = (f"{drug.capitalize()} {direction} the patient's {biomarker} by "
-               f"{abs(pct):.0f}% (from {baseline:.0f} to "
-               f"{min_effect if delta > 0 else max_effect:.0f} {pd_unit}) at the "
-               f"predicted drug level. A modest but noticeable effect.")
+               f"{abs(pct):.0f}% (from {start_val:.0f} to {end_val:.0f} "
+               f"{pd_unit}) at the predicted drug level. A modest but noticeable "
+               f"effect.")
         risk = "low"
     elif abs(pct) < 50:
         lay = (f"{drug.capitalize()} substantially {direction} {biomarker} by "
-               f"{abs(pct):.0f}% (from {baseline:.0f} to "
-               f"{min_effect if delta > 0 else max_effect:.0f} {pd_unit}) at the "
-               f"predicted drug level. A meaningful clinical effect.")
+               f"{abs(pct):.0f}% (from {start_val:.0f} to {end_val:.0f} "
+               f"{pd_unit}) at the predicted drug level. A meaningful clinical "
+               f"effect.")
         risk = "moderate"
     else:
         lay = (f"{drug.capitalize()} strongly {direction} {biomarker} by "
-               f"{abs(pct):.0f}% (from {baseline:.0f} to "
-               f"{min_effect if delta > 0 else max_effect:.0f} {pd_unit}) at the "
-               f"predicted drug level. Strong pharmacological response.")
+               f"{abs(pct):.0f}% (from {start_val:.0f} to {end_val:.0f} "
+               f"{pd_unit}) at the predicted drug level. Strong pharmacological "
+               f"response.")
         risk = "high"
 
-    sci = (f"PD model: {pd_model}. Baseline {biomarker}={baseline:.1f} {pd_unit}. "
-           f"At peak plasma concentration {peak_mg_L:.3f} mg/L, predicted effect "
-           f"={effect_at_tmax:.2f} {pd_unit} (Δ={delta:+.2f} {pd_unit}, "
-           f"{pct:+.1f}% from baseline). Time-course trajectory: "
-           f"max={max_effect:.2f}, min={min_effect:.2f}, baseline={baseline:.1f} "
+    sci = (f"PD model: {pd_model}. Baseline {biomarker}={baseline:.1f} {pd_unit} "
+           f"(model E0). At peak plasma concentration {peak_mg_L:.3f} mg/L, "
+           f"predicted effect ={effect_at_tmax:.2f} {pd_unit} "
+           f"(Δ={delta:+.2f} {pd_unit}, {pct:+.1f}% from baseline). "
+           f"Time-course trajectory: baseline={start_val:.2f}, nadir={end_val:.2f} "
            f"{pd_unit}.")
     return {"headline": f"PD: {drug} → {biomarker}", "lay": lay,
             "scientist": sci, "risk_level": risk}

@@ -270,6 +270,9 @@ def pd_simulate(req: PDRequest):
     step = max(1, len(pk_res.times_h) // 150)
     target = req.target_biomarker or rec.target_biomarker
 
+    peak_mg_L = float(pk_res.c_central.max())
+    baseline_for_pd = float(rec.pd.E0)
+
     return {
         "drug": rec.name,
         "target_biomarker": target,
@@ -291,7 +294,7 @@ def pd_simulate(req: PDRequest):
             for t, c, e in zip(pk_res.times_h[::step],
                                 pk_res.c_central[::step], effect[::step])
         ],
-        "narrative": _narrate_pd(rec.name, target, req.baseline_value, req.concentration_mg_L,
+        "narrative": _narrate_pd(rec.name, target, baseline_for_pd, peak_mg_L,
                                  rec.pd.model.value,
                                  round(float(effect[pk_res.c_central.argmax()]), 3),
                                  round(float(effect.min() if rec.effect_direction == "decrease"
