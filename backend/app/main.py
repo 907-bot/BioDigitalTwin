@@ -74,12 +74,18 @@ def root():
                 "patient_pgx": "GET /phase8/patients/{patient_id}/pgx",
                 "pgx_check": "POST /phase8/patients/pgx-check",
             },
+            "phase_9": {
+                "rules": "GET /phase9/rules",
+                "graph": "GET /phase9/graph",
+                "check": "POST /phase9/check",
+                "pair": "POST /phase9/pair",
+            },
         },
     }
 
 @app.get("/health")
 def health():
-    return {"status": "healthy", "phase": "1+2+3+4+5+8"}
+    return {"status": "healthy", "phase": "1+2+3+4+5+8+9"}
 
 @app.post("/generate-patients")
 def generate_patients(n: int = Query(500, ge=10, le=5000)):
@@ -668,4 +674,11 @@ def phase5_history(session_id: str = Query("default")):
 # =============================================================================
 from app.pgx import pgx_router  # noqa: E402
 app.include_router(pgx_router)
+
+
+# =============================================================================
+# Phase 9 — Drug-Drug Interactions
+# =============================================================================
+from app.ddi import ddi_router  # noqa: E402
+app.include_router(ddi_router)
 
