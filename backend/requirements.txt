@@ -21,6 +21,16 @@ scikit-learn==1.5.2
 snntorch==0.7.0
 scipy==1.14.1
 
+# Phase 4 - Causal AI
+dowhy==0.11.1
+econml==0.15.1
+networkx==3.3
+
+# Phase 5 - LLM Agent
+langchain==0.3.7
+langchain-community==0.3.7
+httpx==0.27.2
+
 # Synthetic data (Phase 1 quality upgrade)
 sdv==1.11.0
 ctgan>=0.9.0,<0.10

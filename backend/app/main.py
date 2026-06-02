@@ -1,5 +1,5 @@
 """
-Bio-Digital Twin  —  Phase 1 + Phase 2 + Phase 3 API
+Bio-Digital Twin  —  Phase 1 + Phase 2 + Phase 3 + Phase 4 + Phase 5 API
 """
 from fastapi import FastAPI, HTTPException, Query, BackgroundTasks, Body
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,7 +13,7 @@ from typing import Optional
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Bio-Digital Twin API", version="0.3.0")
+app = FastAPI(title="Bio-Digital Twin API", version="0.5.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 os.makedirs("data", exist_ok=True)
 os.makedirs("models", exist_ok=True)
@@ -52,12 +52,28 @@ def root():
                 "patient_simulate": "GET /phase3/patients/{patient_id}/simulate",
                 "counterfactual": "POST /phase3/counterfactual",
             },
+            "phase_4": {
+                "causal_graph": "GET /phase4/causal-graph",
+                "build_scm": "POST /phase4/build-scm",
+                "ate": "POST /phase4/ate",
+                "cate": "POST /phase4/cate",
+                "refute": "POST /phase4/refute",
+                "patient_counterfactual": "POST /phase4/patient-counterfactual",
+                "treatments": "GET /phase4/treatments",
+                "outcomes": "GET /phase4/outcomes",
+            },
+            "phase_5": {
+                "chat": "POST /phase5/chat",
+                "tools": "GET /phase5/tools",
+                "reset": "POST /phase5/reset",
+                "history": "GET /phase5/history",
+            },
         },
     }
 
 @app.get("/health")
 def health():
-    return {"status": "healthy", "phase": "1+2+3"}
+    return {"status": "healthy", "phase": "1+2+3+4+5"}
 
 @app.post("/generate-patients")
 def generate_patients(n: int = Query(500, ge=10, le=5000)):
@@ -470,4 +486,174 @@ def counterfactual(req: CounterfactualRequest):
             "to_state":   tx["disease_state"],
         },
     }
+
+
+# =============================================================================
+# Phase 4 — Counterfactual Simulation (Causal AI)
+# =============================================================================
+def _cohort_df():
+    csv = "data/synthetic_patients.csv"
+    if not os.path.exists(csv):
+        raise HTTPException(status_code=404, detail="no cohort — call POST /generate-patients first")
+    return pd.read_csv(csv)
+
+
+class ATERequest(BaseModel):
+    treatment: str
+    outcome: str
+    common_causes: Optional[list[str]] = None
+
+class CATERequest(BaseModel):
+    treatment: str
+    outcome: str
+    effect_modifiers: list[str] = ["bmi"]
+    common_causes: Optional[list[str]] = None
+
+class RefuteRequest(BaseModel):
+    treatment: str
+    outcome: str
+    common_causes: Optional[list[str]] = None
+    method: str = Field(default="random_common_cause",
+                       pattern="^(random_common_cause|placebo)$")
+
+class PatientCounterfactualRequest(BaseModel):
+    patient_id: str
+    treatment: str
+    outcome: str
+    value: float = 1.0
+
+
+@app.get("/phase4/causal-graph")
+def causal_graph():
+    from app.causal.scm import build_causal_dag
+    g = build_causal_dag()
+    return {
+        "n_nodes": g.number_of_nodes(),
+        "n_edges": g.number_of_edges(),
+        "nodes": [{"id": n, **g.nodes[n]} for n in g.nodes],
+        "edges": [{"src": u, "dst": v, **g.edges[u, v]} for u, v in g.edges],
+    }
+
+
+@app.post("/phase4/build-scm")
+def build_scm(force: bool = Query(False)):
+    from app.causal.scm import fit_cohort_scm, reset_scm
+    if force:
+        reset_scm()
+    df = _cohort_df()
+    scm = fit_cohort_scm(df, force=force)
+    return {
+        "status": "ok",
+        "n_nodes_fitted": len(scm.coefficients),
+        "fit_metrics": scm.fit_metrics,
+    }
+
+
+@app.post("/phase4/ate")
+def phase4_ate(req: ATERequest):
+    from app.causal.scm import ate_estimate
+    df = _cohort_df()
+    res = ate_estimate(df, treatment=req.treatment, outcome=req.outcome,
+                       common_causes=req.common_causes)
+    if "error" in res:
+        raise HTTPException(status_code=400, detail=res["error"])
+    return res
+
+
+@app.post("/phase4/cate")
+def phase4_cate(req: CATERequest):
+    from app.causal.scm import cate_estimate
+    df = _cohort_df()
+    res = cate_estimate(df, treatment=req.treatment, outcome=req.outcome,
+                        effect_modifiers=req.effect_modifiers,
+                        common_causes=req.common_causes)
+    if "error" in res:
+        raise HTTPException(status_code=400, detail=res["error"])
+    return res
+
+
+@app.post("/phase4/refute")
+def phase4_refute(req: RefuteRequest):
+    from app.causal.scm import refute_ate
+    df = _cohort_df()
+    res = refute_ate(df, treatment=req.treatment, outcome=req.outcome,
+                     common_causes=req.common_causes, method=req.method)
+    if "error" in res:
+        raise HTTPException(status_code=400, detail=res["error"])
+    return res
+
+
+@app.post("/phase4/patient-counterfactual")
+def phase4_patient_counterfactual(req: PatientCounterfactualRequest):
+    from app.causal.scm import fit_cohort_scm, patient_counterfactual
+    df = _cohort_df()
+    row = df[df["patient_id"] == req.patient_id]
+    if row.empty:
+        raise HTTPException(status_code=404, detail=f"patient '{req.patient_id}' not found")
+    r = row.iloc[0]
+    from app.graph.ontology import BIOMARKERS
+    observed = {b.id: float(r[b.id]) for b in BIOMARKERS}
+    observed["bmi"] = float(r["bmi"])
+    observed["age"] = float(r["age"])
+    scm = fit_cohort_scm(df)
+    res = patient_counterfactual(scm, observed=observed,
+                                 treatment=req.treatment,
+                                 value=float(req.value),
+                                 outcome=req.outcome)
+    if "error" in res:
+        raise HTTPException(status_code=400, detail=res["error"])
+    res["patient_id"] = req.patient_id
+    return res
+
+
+@app.get("/phase4/treatments")
+def phase4_treatments():
+    from app.causal.scm import TREATMENT_TARGETS
+    return {"treatments": [{"name": k, "target_diseases": v}
+                           for k, v in TREATMENT_TARGETS.items()]}
+
+
+@app.get("/phase4/outcomes")
+def phase4_outcomes():
+    from app.causal.scm import OUTCOMES_FOR_DISEASE
+    return {"outcomes": [{"disease": k, "biomarkers": v}
+                          for k, v in OUTCOMES_FOR_DISEASE.items()]}
+
+
+# =============================================================================
+# Phase 5 — LLM Agent
+# =============================================================================
+class ChatRequest(BaseModel):
+    session_id: str = "default"
+    message: str
+    use_mock: Optional[bool] = None   # auto-detect if None
+
+
+@app.get("/phase5/tools")
+def phase5_tools():
+    from app.agent.llm import list_tools
+    return {"tools": list_tools()}
+
+
+@app.post("/phase5/chat")
+def phase5_chat(req: ChatRequest):
+    from app.agent.llm import chat as agent_chat
+    return agent_chat(req.session_id, req.message, use_mock=req.use_mock)
+
+
+@app.post("/phase5/reset")
+def phase5_reset(session_id: str = Query("default")):
+    from app.agent.llm import reset_memory
+    reset_memory(session_id)
+    return {"status": "reset", "session_id": session_id}
+
+
+@app.get("/phase5/history")
+def phase5_history(session_id: str = Query("default")):
+    from app.agent.llm import get_memory
+    mem = get_memory(session_id)
+    return {"session_id": session_id,
+            "turns": len(mem.messages) // 2,
+            "messages": mem.as_list()}
+
 
