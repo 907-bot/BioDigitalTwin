@@ -1,7 +1,7 @@
 FROM python:3.11-slim
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends gcc libpq-dev && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential g++ libpq-dev && rm -rf /var/lib/apt/lists/*
 
 COPY shared/bio-digital-twin-core /shared/bio-digital-twin-core
 RUN pip install -e /shared/bio-digital-twin-core
