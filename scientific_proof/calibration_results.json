@@ -1,0 +1,29 @@
+{
+  "n_patients": 5,
+  "n_predictions": 695,
+  "elapsed_s": 108.15122509002686,
+  "coverage": {
+    "nominal_50": 0.5,
+    "empirical_50": 0.4676258992805755,
+    "coverage_error_50": -0.03237410071942448,
+    "nominal_80": 0.8,
+    "empirical_80": 0.7712230215827338,
+    "coverage_error_80": -0.02877697841726623,
+    "nominal_90": 0.9,
+    "empirical_90": 0.874820143884892,
+    "coverage_error_90": -0.02517985611510798,
+    "nominal_95": 0.95,
+    "empirical_95": 0.9338129496402877,
+    "coverage_error_95": -0.01618705035971224
+  },
+  "max_coverage_error": 0.03237410071942448,
+  "mean_pi_width_95": 25.596437894674864,
+  "pit_uniformity_ks_stat": 0.03655355564091001,
+  "pit_uniformity_ks_p": 0.30362178933540496,
+  "pit_mean": 0.5140889029204331,
+  "pit_std": 0.2977544898651853,
+  "pit_is_uniform": true,
+  "calibration_score": 0.935251798561151,
+  "mean_abs_error": 5.443527989215668,
+  "rmse": 6.787455451410893
+}

@@ -1,0 +1,7 @@
+Metadata-Version: 2.4
+Name: bio-digital-twin-core
+Version: 0.1.0
+Summary: Shared models, schemas, ontology, and config for Bio-Digital Twin microservices
+Requires-Python: >=3.9
+Requires-Dist: pydantic>=2.0
+Requires-Dist: numpy>=1.23

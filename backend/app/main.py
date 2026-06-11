@@ -767,3 +767,16 @@ app.include_router(registry_router)
 from app.xai import router as xai_router  # noqa: E402
 app.include_router(xai_router)
 
+# =============================================================================
+# Phase 0 — Personalization Layer (Foundational)
+# =============================================================================
+from app.personalization import personalization_router  # noqa: E402
+app.include_router(personalization_router)
+
+# =============================================================================
+# Phase 5 — Autonomous Biological Intelligence Platform (ABIP)
+# =============================================================================
+from app.personalization import phase5_router  # noqa: E402
+app.include_router(phase5_router)
+
+

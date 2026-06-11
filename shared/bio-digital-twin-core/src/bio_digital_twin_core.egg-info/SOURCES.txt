@@ -1,0 +1,10 @@
+pyproject.toml
+src/bio_digital_twin_core/__init__.py
+src/bio_digital_twin_core/config.py
+src/bio_digital_twin_core/ontology.py
+src/bio_digital_twin_core/schemas.py
+src/bio_digital_twin_core.egg-info/PKG-INFO
+src/bio_digital_twin_core.egg-info/SOURCES.txt
+src/bio_digital_twin_core.egg-info/dependency_links.txt
+src/bio_digital_twin_core.egg-info/requires.txt
+src/bio_digital_twin_core.egg-info/top_level.txt

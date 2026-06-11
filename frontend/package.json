@@ -11,6 +11,7 @@
   "dependencies": {
     "@react-three/drei": "9.114.0",
     "@react-three/fiber": "8.17.10",
+    "@react-three/postprocessing": "^3.0.4",
     "clsx": "2.1.1",
     "next": "14.2.15",
     "react": "18.3.1",
