@@ -1,11 +1,12 @@
 "use client";
-import { useMemo, useState, useRef, useEffect } from "react";
+import { useMemo, useState, useRef, useEffect, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Html, Line, Text } from "@react-three/drei";
+import { EffectComposer, Bloom, ChromaticAberration } from "@react-three/postprocessing";
 import * as THREE from "three";
-import { HumanBody } from "./HumanBody";
+import { HolographicBody } from "./HolographicBody";
 import { organPosition, organColor, organLabel, ORGAN_POSITIONS } from "./BodyGeometry";
-import type { CausalGraph, CausalNode } from "@/lib/api";
+import type { CausalGraph } from "@/lib/api";
 
 const KIND_COLOR: Record<string, string> = {
   biomarker:   "#1D9E75",
@@ -13,6 +14,8 @@ const KIND_COLOR: Record<string, string> = {
   disease:     "#D85A30",
   demographic: "#BA7517",
 };
+
+const GLOW_CYAN = "#00d5ff";
 
 type Edge = { src: string; dst: string; weight: number; rel?: string };
 
@@ -41,11 +44,19 @@ function OrganNode({ id, pos, kind, label, color, highlighted, dim, onClick }: {
         onClick={() => onClick(id)}
       >
         <sphereGeometry args={[hover || highlighted ? 0.045 : 0.035, 16, 12]} />
-        <meshStandardMaterial
+        <meshBasicMaterial
           color={dim ? "#475569" : color}
-          emissive={highlighted ? color : "#000"}
-          emissiveIntensity={highlighted ? 0.5 : 0}
-          roughness={0.4}
+          transparent
+          opacity={dim ? 0.3 : 0.9}
+        />
+      </mesh>
+      <mesh>
+        <sphereGeometry args={[0.05, 12, 8]} />
+        <meshBasicMaterial
+          color={highlighted ? "#ffffff" : color}
+          transparent
+          opacity={highlighted ? 0.3 : 0.1}
+          depthWrite={false}
         />
       </mesh>
       {(hover || highlighted) && (
@@ -69,22 +80,37 @@ function EdgeArc({ from, to, highlighted, dim }: {
   from: [number, number, number]; to: [number, number, number];
   highlighted: boolean; dim: boolean;
 }) {
-  // Slightly arc the edge so it doesn't go through the body
   const mid: [number, number, number] = [
     (from[0] + to[0]) / 2,
     (from[1] + to[1]) / 2,
     (from[2] + to[2]) / 2 + 0.04,
   ];
   const points = [from, mid, to] as [number, number, number][];
-  const color = dim ? "#1e293b" : highlighted ? "#fbbf24" : "#475569";
+  const color = dim ? "#1e293b" : highlighted ? "#fbbf24" : "#00d5ff";
   return (
     <Line
       points={points}
       color={color}
-      lineWidth={highlighted ? 2.5 : 1.2}
+      lineWidth={highlighted ? 2.5 : 0.8}
       transparent
-      opacity={dim ? 0.15 : 0.9}
+      opacity={dim ? 0.1 : 0.6}
     />
+  );
+}
+
+function HolographicEffects() {
+  return (
+    <EffectComposer>
+      <Bloom
+        luminanceThreshold={0}
+        luminanceSmoothing={0.9}
+        intensity={0.8}
+        mipmapBlur
+      />
+      <ChromaticAberration
+        offset={new THREE.Vector2(0.001, 0.001)}
+      />
+    </EffectComposer>
   );
 }
 
@@ -103,7 +129,6 @@ function CausalScene({ graph, selected, onSelect }: {
     return { positions: pos, edges: e };
   }, [graph]);
 
-  // Build adjacency for highlighting
   const connected = useMemo(() => {
     if (!selected) return new Set<string>();
     const s = new Set<string>([selected]);
@@ -118,11 +143,13 @@ function CausalScene({ graph, selected, onSelect }: {
 
   return (
     <>
-      <ambientLight intensity={0.4} />
-      <directionalLight position={[3, 4, 3]} intensity={0.7} castShadow />
-      <directionalLight position={[-3, 2, -2]} intensity={0.3} />
+      <ambientLight intensity={0.2} />
+      <pointLight position={[0, 2, 3]} intensity={0.4} color={GLOW_CYAN} />
+      <pointLight position={[0, 1, -2]} intensity={0.2} color="#1a6bff" />
 
-      <HumanBody />
+      <Suspense fallback={null}>
+        <HolographicBody />
+      </Suspense>
 
       {/* edges */}
       {edges.map((e, i) => {
@@ -158,7 +185,6 @@ function CausalScene({ graph, selected, onSelect }: {
         );
       })}
 
-      {/* legend hint for unmapped nodes */}
       {orphanNodes.length > 0 && (
         <Text
           position={[0, 2.1, 0]}
@@ -179,7 +205,6 @@ export function Causal3D({ graph, height = 560 }: {
   const [selected, setSelected] = useState<string | null>(null);
   const sel = selected ? graph.nodes.find((n) => n.id === selected) : null;
 
-  // Reset selection if graph changes
   useEffect(() => { setSelected(null); }, [graph]);
 
   return (
@@ -191,8 +216,9 @@ export function Causal3D({ graph, height = 560 }: {
           camera={{ position: [0, 1.0, 2.2], fov: 40 }}
           dpr={[1, 2]}
         >
-          <color attach="background" args={["#0b0f17"]} />
+          <color attach="background" args={["#05080f"]} />
           <CausalScene graph={graph} selected={selected} onSelect={setSelected} />
+          <HolographicEffects />
           <OrbitControls
             enablePan
             enableZoom
@@ -205,7 +231,7 @@ export function Causal3D({ graph, height = 560 }: {
       </div>
       <div className="space-y-3">
         <div>
-          <div className="label">3D causal view</div>
+          <div className="label">3D holographic view</div>
           <p className="text-[10px] text-muted mt-1">
             Drag to rotate · scroll to zoom · click an organ node to
             highlight its causal connections
@@ -234,8 +260,8 @@ export function Causal3D({ graph, height = 560 }: {
           </div>
         ) : (
           <div className="rounded border border-border bg-bg p-3 text-xs text-muted">
-            Click any colored dot on the body to inspect that organ or
-            biomarker.
+            A holographic 3D body with organ nodes and causal
+            connections shown inside.
           </div>
         )}
         <div>
@@ -253,8 +279,8 @@ export function Causal3D({ graph, height = 560 }: {
           </div>
         </div>
         <div className="text-[10px] text-muted leading-relaxed pt-2 border-t border-border">
-          {Object.keys(ORGAN_POSITIONS).length} anatomical landmarks
-          mapped from causal graph node IDs.
+          {Object.keys(ORGAN_POSITIONS).length} anatomical landmarks on
+          a stylized holographic body model.
         </div>
       </div>
     </div>

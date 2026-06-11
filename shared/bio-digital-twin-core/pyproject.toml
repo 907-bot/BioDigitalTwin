@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bio-digital-twin-core"
+version = "0.1.0"
+description = "Shared models, schemas, ontology, and config for Bio-Digital Twin microservices"
+requires-python = ">=3.9"
+dependencies = [
+    "pydantic>=2.0",
+    "numpy>=1.23",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

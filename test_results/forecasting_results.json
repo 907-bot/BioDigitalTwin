@@ -1,0 +1,34 @@
+{
+  "n_patients": 5,
+  "n_total": 5,
+  "rmse_1step_mean": 11.82361058238395,
+  "rmse_1step_std": 0.8502982052626364,
+  "rmse_6step_mean": 11.063578732339272,
+  "rmse_24step_mean": 10.96999212509144,
+  "pi80_coverage_mean": 0.7619047619047619,
+  "pi95_coverage_mean": 0.9079365079365079,
+  "counterfactual_ate_rmse": 190.2507420220801,
+  "counterfactual_ate_bias_mean": 170.7261983002782,
+  "convergence_rate": 1.0,
+  "baseline_rmse_1step": 11.87750793206051,
+  "baseline_rmse_6step": 12.051364575215798,
+  "baseline_rmse_24step": 12.223783929911097,
+  "improvement_over_baseline_1step": 0.45377658331069437,
+  "improvement_over_baseline_6step": 8.196464696686334,
+  "improvement_over_baseline_24step": 10.256985987388722,
+  "clarke_zone_a_mean": 85.39682539682539,
+  "clarke_zone_ab_mean": 90.15873015873015,
+  "mard_mean": 11.293852727821868,
+  "by_diabetes_type": {
+    "T2DM": {
+      "n": 1,
+      "rmse_1step": 11.854142972542569,
+      "pi80_coverage": 0.7936507936507936
+    },
+    "none": {
+      "n": 4,
+      "rmse_1step": 11.815977484844296,
+      "pi80_coverage": 0.753968253968254
+    }
+  }
+}

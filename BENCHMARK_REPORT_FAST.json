@@ -1,0 +1,379 @@
+{
+  "framework_version": "1.0",
+  "timestamp": "2026-06-04 14:21:48",
+  "n_patients": 2,
+  "elapsed_seconds": 163.66842794418335,
+  "overall_score": 0.43603480387922156,
+  "passing": false,
+  "catastrophic": true,
+  "dimensions": [
+    {
+      "name": "Personalization",
+      "score": 0.25482216039784195,
+      "passed": false,
+      "gold": false,
+      "catastrophic": true,
+      "sub_benchmarks": [
+        {
+          "name": "1.1 Within-Patient Hold-Out",
+          "score": 0.0,
+          "passed": false,
+          "failure": true,
+          "failure_reasons": [
+            "RMSE_glucose=2180.1 mg/dL > 30",
+            "Twin worse than baseline (improvement=-929.47)"
+          ]
+        },
+        {
+          "name": "1.2 Cross-Validation Stability",
+          "score": 0.7644664811935258,
+          "passed": true,
+          "failure": false,
+          "failure_reasons": []
+        },
+        {
+          "name": "1.3 Few-Shot Personalization",
+          "score": 0.0,
+          "passed": false,
+          "failure": true,
+          "failure_reasons": [
+            "6h RMSE=2762.6 > 40 \u2014 personalization does nothing"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Parameter Recovery",
+      "score": 0.5671085777976909,
+      "passed": false,
+      "gold": false,
+      "catastrophic": false,
+      "sub_benchmarks": [
+        {
+          "name": "2.1 Known Ground-Truth Recovery",
+          "score": 1.0,
+          "passed": true,
+          "failure": false,
+          "failure_reasons": []
+        },
+        {
+          "name": "2.2 Identifiability Under Realistic Observation",
+          "score": 0.0878456710514724,
+          "passed": false,
+          "failure": false,
+          "failure_reasons": []
+        },
+        {
+          "name": "2.3 Parameter Recovery Under Confounding",
+          "score": 0.6134800623416001,
+          "passed": false,
+          "failure": false,
+          "failure_reasons": []
+        }
+      ]
+    },
+    {
+      "name": "State Estimation",
+      "score": 0.25815374949036873,
+      "passed": false,
+      "gold": false,
+      "catastrophic": true,
+      "sub_benchmarks": [
+        {
+          "name": "3.1 Unobserved State Tracking",
+          "score": 0.24742709364552062,
+          "passed": false,
+          "failure": false,
+          "failure_reasons": []
+        },
+        {
+          "name": "3.2 Rapid Transient Tracking",
+          "score": 0.0,
+          "passed": false,
+          "failure": true,
+          "failure_reasons": [
+            "Peak error=432.6 > 50 mg/dL",
+            "Timing error=30.5 > 30 min"
+          ]
+        },
+        {
+          "name": "3.3 Steady-State Fidelity",
+          "score": 0.5270341548255856,
+          "passed": false,
+          "failure": true,
+          "failure_reasons": [
+            "Oscillation 580.0 mg/dL \u2014 twin self-oscillates"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Counterfactual Validity",
+      "score": 0.5,
+      "passed": false,
+      "gold": false,
+      "catastrophic": true,
+      "sub_benchmarks": [
+        {
+          "name": "4.1 Known Intervention Recovery",
+          "score": 1.0,
+          "passed": true,
+          "failure": false,
+          "failure_reasons": []
+        },
+        {
+          "name": "4.2 do-Calculus Soundness",
+          "score": 0.3,
+          "passed": false,
+          "failure": true,
+          "failure_reasons": [
+            "do-calculus is not actually implemented; uses parameter perturbation"
+          ]
+        },
+        {
+          "name": "4.3 Unmeasured Confounding Sensitivity",
+          "score": 0.2,
+          "passed": false,
+          "failure": false,
+          "failure_reasons": [
+            "E-value and sensitivity analysis not implemented"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Calibration",
+      "score": 0.30526355110631354,
+      "passed": false,
+      "gold": false,
+      "catastrophic": true,
+      "sub_benchmarks": [
+        {
+          "name": "5.1 Predictive Coverage",
+          "score": 0.0,
+          "passed": false,
+          "failure": true,
+          "failure_reasons": [
+            "Max coverage deviation 0.95 > 0.15",
+            "KS statistic 0.84 > 0.20 \u2014 non-uniform PIT"
+          ]
+        },
+        {
+          "name": "5.2 Sharpness",
+          "score": 1.0,
+          "passed": true,
+          "failure": false,
+          "failure_reasons": []
+        },
+        {
+          "name": "5.3 Conditional Calibration",
+          "score": 0.0,
+          "passed": false,
+          "failure": true,
+          "failure_reasons": [
+            "Stratified coverage 0.90 > 0.20"
+          ]
+        },
+        {
+          "name": "5.4 Reliability Diagrams (ECE/MCE)",
+          "score": 0.22105420442525403,
+          "passed": "False",
+          "failure": false,
+          "failure_reasons": []
+        }
+      ]
+    },
+    {
+      "name": "Robustness",
+      "score": 0.125,
+      "passed": false,
+      "gold": false,
+      "catastrophic": true,
+      "sub_benchmarks": [
+        {
+          "name": "6.1 Missing Data",
+          "score": 0.0,
+          "passed": false,
+          "failure": true,
+          "failure_reasons": [
+            "RMSE at 50% missing = 45295.4 > 50 \u2014 twin falls apart"
+          ]
+        },
+        {
+          "name": "6.2 Measurement Noise",
+          "score": 0.0,
+          "passed": false,
+          "failure": true,
+          "failure_reasons": [
+            "RMSE at \u03c3=15 noise = 145.2 > 50"
+          ]
+        },
+        {
+          "name": "6.3 Sensor Failure / Outliers",
+          "score": 0.0,
+          "passed": false,
+          "failure": true,
+          "failure_reasons": [
+            "Recovery from spike = 47.0 steps > 30"
+          ]
+        },
+        {
+          "name": "6.4 Adversarial Perturbation",
+          "score": 0.5,
+          "passed": false,
+          "failure": false,
+          "failure_reasons": [
+            "Adversarial perturbation search not fully implemented"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Physiological Realism",
+      "score": 0.7849999999999999,
+      "passed": true,
+      "gold": false,
+      "catastrophic": false,
+      "sub_benchmarks": [
+        {
+          "name": "7.1 Physiological Constraints",
+          "score": 1.0,
+          "passed": true,
+          "failure": false,
+          "failure_reasons": []
+        },
+        {
+          "name": "7.2 Meal Response Shape",
+          "score": 0.94,
+          "passed": true,
+          "failure": false,
+          "failure_reasons": []
+        },
+        {
+          "name": "7.3 Circadian Rhythms",
+          "score": 0.5,
+          "passed": false,
+          "failure": false,
+          "failure_reasons": []
+        },
+        {
+          "name": "7.4 Exercise Physiology",
+          "score": 0.7,
+          "passed": true,
+          "failure": false,
+          "failure_reasons": []
+        }
+      ]
+    },
+    {
+      "name": "Generalization",
+      "score": 0.3,
+      "passed": false,
+      "gold": false,
+      "catastrophic": true,
+      "sub_benchmarks": [
+        {
+          "name": "8.1 Population Transfer",
+          "score": 0.0,
+          "passed": false,
+          "failure": true,
+          "failure_reasons": [
+            "T1DM RMSE 131.2 > 50",
+            "Worst-pop RMSE 158.4 > 35"
+          ]
+        },
+        {
+          "name": "8.2 Distribution Shift",
+          "score": 0.5,
+          "passed": false,
+          "failure": false,
+          "failure_reasons": [
+            "Distribution shift detection not rigorously tested"
+          ]
+        },
+        {
+          "name": "8.3 Cross-Modality Generalization",
+          "score": 0.4,
+          "passed": false,
+          "failure": false,
+          "failure_reasons": [
+            "Sparse measurement handling not rigorously tested"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Drift Detection",
+      "score": 0.64,
+      "passed": false,
+      "gold": false,
+      "catastrophic": true,
+      "sub_benchmarks": [
+        {
+          "name": "9.1 Abrupt Drift Detection",
+          "score": 0.92,
+          "passed": true,
+          "failure": false,
+          "failure_reasons": []
+        },
+        {
+          "name": "9.2 Gradual Drift Quantification",
+          "score": 0.0,
+          "passed": false,
+          "failure": true,
+          "failure_reasons": [
+            "Gradual drift not detected within reasonable time"
+          ]
+        },
+        {
+          "name": "9.3 Drift Attribution",
+          "score": 1.0,
+          "passed": true,
+          "failure": false,
+          "failure_reasons": []
+        }
+      ]
+    },
+    {
+      "name": "Clinical Usefulness",
+      "score": 0.625,
+      "passed": false,
+      "gold": false,
+      "catastrophic": true,
+      "sub_benchmarks": [
+        {
+          "name": "10.1 Hypoglycemia Prediction",
+          "score": 0.0,
+          "passed": false,
+          "failure": true,
+          "failure_reasons": [
+            "Hypo detection rate 0.00 < 0.50"
+          ]
+        },
+        {
+          "name": "10.2 Treatment Recommendation",
+          "score": 1.0,
+          "passed": true,
+          "failure": false,
+          "failure_reasons": []
+        },
+        {
+          "name": "10.3 NNT Calibration",
+          "score": 0.5,
+          "passed": false,
+          "failure": false,
+          "failure_reasons": [
+            "NNT calibration not validated against ground truth"
+          ]
+        },
+        {
+          "name": "10.4 Safety Guardrails",
+          "score": 1.0,
+          "passed": true,
+          "failure": false,
+          "failure_reasons": []
+        }
+      ]
+    }
+  ]
+}

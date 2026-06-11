@@ -1,0 +1,100 @@
+{
+  "forecasting": {
+    "n_patients": 5,
+    "n_total": 5,
+    "rmse_1step_mean": 12.719858418505272,
+    "rmse_1step_std": 2.0235407057607873,
+    "rmse_6step_mean": 13.122324930309977,
+    "rmse_24step_mean": 11.05993360997544,
+    "pi80_coverage_mean": 0.7238095238095238,
+    "pi95_coverage_mean": 0.8825396825396824,
+    "counterfactual_ate_rmse": 16.977417520464364,
+    "counterfactual_ate_bias_mean": -5.389289464086383,
+    "convergence_rate": 1.0,
+    "baseline_rmse_1step": 12.764347620643269,
+    "baseline_rmse_6step": 12.939913981989164,
+    "baseline_rmse_24step": 13.191601165434431,
+    "improvement_over_baseline_1step": 0.3485427023786736,
+    "improvement_over_baseline_6step": -1.4096766684439155,
+    "improvement_over_baseline_24step": 16.159278382707154,
+    "clarke_zone_a_mean": 85.07936507936508,
+    "clarke_zone_ab_mean": 95.23809523809523,
+    "mard_mean": 11.200765210043897,
+    "by_diabetes_type": {
+      "T2DM": {
+        "n": 1,
+        "rmse_1step": 16.393461395125716,
+        "pi80_coverage": 0.8095238095238095
+      },
+      "none": {
+        "n": 4,
+        "rmse_1step": 11.80145767435016,
+        "pi80_coverage": 0.7023809523809524
+      }
+    },
+    "elapsed_s": 271.00067615509033
+  },
+  "trials": {
+    "trials": {
+      "dcct": {
+        "name": "DCCT (Diabetes Control and Complications Trial)",
+        "published_reference": "DCCT Research Group, NEJM 1993;329:977-86",
+        "n_patients": 20,
+        "endpoint_results": {
+          "weight_change": {
+            "Intensive": 0.3636363636349671,
+            "Conventional": 0.3636363636349671
+          },
+          "HbA1c_change": {
+            "Intensive": -7.869689291104341,
+            "Conventional": -8.187231420248617
+          }
+        },
+        "effect_sizes": {
+          "weight_change": 0.0,
+          "HbA1c_change": -0.31754212914427615
+        },
+        "p_values": {
+          "weight_change": 1.0,
+          "HbA1c_change": 0.19959701111050232
+        },
+        "summary": "Trial: DCCT \u2014 Intensive vs Conventional Insulin in T1DM (n=20)\n  weight_change: Intensive: 0.36, Conventional: 0.36\n  HbA1c_change: Intensive: -7.87, Conventional: -8.19\n  Effect weight_change: 0.000 (p=1.0000)\n  Effect HbA1c_change: -0.318 (p=0.1996)",
+        "elapsed_s": 15.664861917495728
+      }
+    },
+    "elapsed_s": 15.66503119468689,
+    "n_trials": 1
+  },
+  "calibration": {
+    "n_patients": 5,
+    "n_predictions": 695,
+    "elapsed_s": 108.15122509002686,
+    "coverage": {
+      "nominal_50": 0.5,
+      "empirical_50": 0.4676258992805755,
+      "coverage_error_50": -0.03237410071942448,
+      "nominal_80": 0.8,
+      "empirical_80": 0.7712230215827338,
+      "coverage_error_80": -0.02877697841726623,
+      "nominal_90": 0.9,
+      "empirical_90": 0.874820143884892,
+      "coverage_error_90": -0.02517985611510798,
+      "nominal_95": 0.95,
+      "empirical_95": 0.9338129496402877,
+      "coverage_error_95": -0.01618705035971224
+    },
+    "max_coverage_error": 0.03237410071942448,
+    "mean_pi_width_95": 25.596437894674864,
+    "pit_uniformity_ks_stat": 0.03655355564091001,
+    "pit_uniformity_ks_p": 0.30362178933540496,
+    "pit_mean": 0.5140889029204331,
+    "pit_std": 0.2977544898651853,
+    "pit_is_uniform": true,
+    "calibration_score": 0.935251798561151,
+    "mean_abs_error": 5.443527989215668,
+    "rmse": 6.787455451410893
+  },
+  "total_elapsed_s": 399.39344000816345,
+  "generated": "2026-06-09T15:09:02.553330",
+  "mode": "quick"
+}

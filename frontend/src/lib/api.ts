@@ -51,6 +51,12 @@ export type Patient = {
   risk_score?: number; risk_label?: string;
 };
 
+export type OntologyNode = {
+  id: string; kind: string; name: string; unit?: string;
+  healthy_lo?: number; healthy_hi?: number;
+};
+export type OntologyEdge = { src: string; dst: string; rel: string; weight: number };
+
 export type Simulation = {
   disease: string; horizon_days: number; steps: number;
   disease_state: string; final_risk: number; initial_risk: number;
@@ -94,6 +100,14 @@ export type PatientCounterfactual = {
 // --- endpoints ---
 export const api = {
   health:        () => get<{ status: string; phase: string }>("/health"),
+
+  // Ontology service
+  ontologyBiomarkers: () => get<{ biomarkers: OntologyNode[] }>("/ontology/biomarkers"),
+  ontologyOrgans:    () => get<{ organs: OntologyNode[] }>("/ontology/organs"),
+  ontologyDiseases:  () => get<{ diseases: OntologyNode[] }>("/ontology/diseases"),
+  ontologyGraph:     () => get<{ nodes: OntologyNode[]; edges: OntologyEdge[] }>("/ontology/graph"),
+  ontologyPositions: () => get<{ positions: Record<string, [number, number, number]> }>("/ontology/positions"),
+
   generate:      (n = 500) => post<any>("/generate-patients", { n }),
   buildGraph:    (use_neo4j = false) =>
                   post<any>(`/phase2/build-graph?threshold=0.80&use_neo4j=${use_neo4j}`, {}),
