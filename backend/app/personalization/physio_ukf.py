@@ -51,7 +51,7 @@ class PhysioOnlyUKF:
         # Process noise
         self.Q = np.eye(PHYSIO_DIM) * process_noise_scale
         self.Q[0, 0] *= 10.0   # glucose
-        self.Q[1, 1] *= 5.0    # insulin
+        self.Q[1, 1] *= 1.0    # insulin
         self.Q[5, 5] *= 5.0
         self.Q[6, 6] *= 5.0
         self.Q[7, 7] *= 3.0
@@ -136,7 +136,7 @@ class PhysioOnlyUKF:
     def _clamp_covariance(self) -> None:
         """Soft cap on covariance diagonals, preserving positive definiteness."""
         max_vars = {
-            0: 3000.0, 1: 500.0, 5: 2000.0, 6: 1000.0, 7: 1000.0,
+            0: 3000.0, 1: 50.0, 5: 2000.0, 6: 1000.0, 7: 1000.0,
         }
         diag = np.diag(self._cov)
         scales = np.ones(len(diag))
@@ -173,7 +173,7 @@ class PhysioOnlyUKF:
         g0 = prop[0, 0]
         for i in range(1, 2 * self._n + 1):
             if prop[i, 0] < 30 or prop[i, 0] > 500:
-                blend = 0.5
+                blend = 0.8
                 prop[i, :] = (1 - blend) * prop[i, :] + blend * prop[0, :]
 
         self._mu = np.dot(self._w_m, prop)

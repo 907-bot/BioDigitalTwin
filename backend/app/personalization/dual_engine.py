@@ -70,7 +70,9 @@ class DualEstimationEngine:
         self,
         map_window: int = 50,
         map_update_interval: int = 10,
+        patient_has_diabetes: bool = False,
     ):
+        self.patient_has_diabetes = patient_has_diabetes
         self.map_window = map_window
         self.map_update_interval = map_update_interval
         # Identifiable param indices
@@ -117,38 +119,72 @@ class DualEstimationEngine:
 
     def _prior_mean_state(self) -> np.ndarray:
         """Population-mean state for unobserved dims during MAP."""
-        return np.array([
-            100.0,   # glucose
-            5.0,     # insulin
-            2.0,     # HGP
-            4.0,     # PGU
-            1.0,     # IR
-            120.0,   # SBP
-            80.0,    # DBP
-            70.0,    # HR
-            45.0,    # HRV
-            100.0,   # GFR
-            140.0,   # Na
-            4.2,     # K
-            290.0,   # Osm
-            1.0,     # CRP
-            1.2,     # CLOCK_BMAL1
-            0.8,     # PER_CRY
-            350.0,   # cortisol
-            10.0,    # melatonin
-            0.0,     # circadian_phase
-            0.3,     # sleep_pressure
-            20.0,    # fat_mass
-            0.5,     # FFA
-            120.0,   # LDL
-            50.0,    # HDL
-            120.0,   # TG
-            0.0,     # CRP_elevated
-            0.0,     # endothelial Dysfunction
-            0.0,     # oxidative_stress
-            0.0,     # nf_kb
-            0.0,     # tnf_alpha
-        ])
+        if self.patient_has_diabetes:
+            return np.array([
+                160.0,   # glucose
+                12.0,    # insulin
+                4.0,     # HGP
+                4.0,     # PGU
+                1.0,     # IR
+                120.0,   # SBP
+                80.0,    # DBP
+                70.0,    # HR
+                45.0,    # HRV
+                100.0,   # GFR
+                140.0,   # Na
+                4.2,     # K
+                290.0,   # Osm
+                1.0,     # CRP
+                1.2,     # CLOCK_BMAL1
+                0.8,     # PER_CRY
+                350.0,   # cortisol
+                10.0,    # melatonin
+                0.0,     # circadian_phase
+                0.3,     # sleep_pressure
+                20.0,    # fat_mass
+                0.5,     # FFA
+                120.0,   # LDL
+                50.0,    # HDL
+                120.0,   # TG
+                0.0,     # CRP_elevated
+                0.0,     # endothelial Dysfunction
+                0.0,     # oxidative_stress
+                0.0,     # nf_kb
+                0.0,     # tnf_alpha
+            ])
+        else:
+            return np.array([
+                100.0,   # glucose
+                5.0,     # insulin
+                2.0,     # HGP
+                4.0,     # PGU
+                1.0,     # IR
+                120.0,   # SBP
+                80.0,    # DBP
+                70.0,    # HR
+                45.0,    # HRV
+                100.0,   # GFR
+                140.0,   # Na
+                4.2,     # K
+                290.0,   # Osm
+                1.0,     # CRP
+                1.2,     # CLOCK_BMAL1
+                0.8,     # PER_CRY
+                350.0,   # cortisol
+                10.0,    # melatonin
+                0.0,     # circadian_phase
+                0.3,     # sleep_pressure
+                20.0,    # fat_mass
+                0.5,     # FFA
+                120.0,   # LDL
+                50.0,    # HDL
+                120.0,   # TG
+                0.0,     # CRP_elevated
+                0.0,     # endothelial Dysfunction
+                0.0,     # oxidative_stress
+                0.0,     # nf_kb
+                0.0,     # tnf_alpha
+            ])
 
     def _build_full_params(self) -> np.ndarray:
         full = self._full_params_template.copy()
@@ -157,7 +193,10 @@ class DualEstimationEngine:
         return full
 
     def initialize(self, initial_obs: np.ndarray) -> None:
-        mu = self.filter.get_state()
+        if self.patient_has_diabetes:
+            mu = self._prior_mean_state().copy()
+        else:
+            mu = self.filter.get_state()
         self._last_obs = initial_obs.copy()
         if len(initial_obs) > 0:
             mu[0] = float(initial_obs[0])
@@ -175,6 +214,17 @@ class DualEstimationEngine:
         if len(initial_obs) > 9:
             mu[21] = float(initial_obs[9])
             mu[22] = float(initial_obs[10])
+        
+        # Write state back to UKF filter
+        self.filter._mu = mu
+
+        # Warm-start parameter MAP estimates for subgroup (Fix C)
+        self._estimated_params = self._full_params_template[self.identifiable_indices].copy()
+        if self.patient_has_diabetes:
+            self._estimated_params[0] *= 0.3   # SI reduced 70%
+            self._estimated_params[1] *= 1.4   # HGP_basal elevated
+            self._estimated_params[2] *= 1.5   # beta_response elevated (compensatory)
+
         self._step_count = 0
         self._obs_buffer.clear()
         self._param_history.clear()
@@ -485,5 +535,5 @@ class DualEstimationEngine:
         )
 
 
-def create_dual_engine() -> DualEstimationEngine:
-    return DualEstimationEngine()
+def create_dual_engine(patient_has_diabetes: bool = False) -> DualEstimationEngine:
+    return DualEstimationEngine(patient_has_diabetes=patient_has_diabetes)

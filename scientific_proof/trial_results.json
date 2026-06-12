@@ -5,27 +5,27 @@
       "published_reference": "DCCT Research Group, NEJM 1993;329:977-86",
       "n_patients": 20,
       "endpoint_results": {
-        "weight_change": {
-          "Intensive": 0.3636363636349671,
-          "Conventional": 0.3636363636349671
-        },
         "HbA1c_change": {
-          "Intensive": -7.869689291104341,
-          "Conventional": -8.187231420248617
+          "Conventional": -8.187231420248617,
+          "Intensive": -7.869689291104341
+        },
+        "weight_change": {
+          "Conventional": 0.3636363636349671,
+          "Intensive": 0.3636363636349671
         }
       },
       "effect_sizes": {
-        "weight_change": 0.0,
-        "HbA1c_change": -0.31754212914427615
+        "HbA1c_change": 0.31754212914427615,
+        "weight_change": 0.0
       },
       "p_values": {
-        "weight_change": 1.0,
-        "HbA1c_change": 0.19959701111050232
+        "HbA1c_change": 0.19959701111050232,
+        "weight_change": 1.0
       },
-      "summary": "Trial: DCCT \u2014 Intensive vs Conventional Insulin in T1DM (n=20)\n  weight_change: Intensive: 0.36, Conventional: 0.36\n  HbA1c_change: Intensive: -7.87, Conventional: -8.19\n  Effect weight_change: 0.000 (p=1.0000)\n  Effect HbA1c_change: -0.318 (p=0.1996)",
-      "elapsed_s": 15.664861917495728
+      "summary": "Trial: DCCT \u2014 Intensive vs Conventional Insulin in T1DM (n=20)\n  HbA1c_change: Conventional: -8.19, Intensive: -7.87\n  weight_change: Conventional: 0.36, Intensive: 0.36\n  Effect HbA1c_change: 0.318 (p=0.1996)\n  Effect weight_change: 0.000 (p=1.0000)",
+      "elapsed_s": 5.506132125854492
     }
   },
-  "elapsed_s": 15.66503119468689,
+  "elapsed_s": 5.506165027618408,
   "n_trials": 1
 }
