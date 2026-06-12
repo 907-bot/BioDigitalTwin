@@ -94,7 +94,7 @@ def clarke_error_grid(
             if pred < 70:
                 zones[i] = "A"
             elif pred <= 180:
-                zones[i] = "B"
+                zones[i] = "D"
             else:
                 zones[i] = "E"
         elif ref <= 180:
@@ -111,7 +111,7 @@ def clarke_error_grid(
             if pred < 70:
                 zones[i] = "E"
             elif pred <= 180:
-                zones[i] = "B"
+                zones[i] = "D"
             else:
                 if pct_err <= 0.2:
                     zones[i] = "A"

@@ -107,5 +107,5 @@ class TestDriftDetector:
         status = dd.status()
         assert "level" in status
         assert "label" in status
-        assert "consecutive_violations" in status
-        assert "can_run_counterfactuals" in status
+        assert "subsystems" in status
+        assert dd.can_run_counterfactuals

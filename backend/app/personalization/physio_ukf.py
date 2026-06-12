@@ -41,8 +41,8 @@ class PhysioOnlyUKF:
         dynamics_fn: Callable,
         obs_fn: Callable,
         params_fn: Callable[[], np.ndarray],
-        process_noise_scale: float = 0.01,
-        obs_noise_scale: float = 0.5,
+        process_noise_scale: float = 5.0,
+        obs_noise_scale: float = 50.0,
     ):
         self._n = PHYSIO_DIM
         self._f = dynamics_fn
@@ -136,7 +136,7 @@ class PhysioOnlyUKF:
     def _clamp_covariance(self) -> None:
         """Soft cap on covariance diagonals, preserving positive definiteness."""
         max_vars = {
-            0: 3000.0, 1: 500.0, 5: 2000.0, 6: 1000.0, 7: 1000.0,
+            0: 10000.0, 1: 5000.0, 5: 5000.0, 6: 3000.0, 7: 3000.0,
         }
         diag = np.diag(self._cov)
         scales = np.ones(len(diag))
