@@ -48,6 +48,11 @@ class ValidationCriterion:
     passed: Optional[bool] = None
     weight: float = 1.0
 
+    def __post_init__(self):
+        if self.passed is None and self.actual_value is not None:
+            lo, hi = self.acceptable_range
+            self.passed = lo <= self.actual_value <= hi
+
 
 @dataclass
 class ValidationResult:

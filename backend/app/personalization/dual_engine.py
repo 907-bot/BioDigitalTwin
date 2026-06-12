@@ -220,8 +220,6 @@ class DualEstimationEngine:
 
         self.filter.predict({})
         self.filter.update(observation)
-        # Overwrite observed dims with ground truth — UKF handles unobserved only
-        self._overwrite_observed_state(observation)
         self._last_obs = observation.copy()
         self._obs_buffer.append(observation.copy())
         if len(self._obs_buffer) > self.map_window * 2:
@@ -396,32 +394,7 @@ class DualEstimationEngine:
         return -(log_lik + log_prior)
 
     def _build_state_from_obs(self, obs: np.ndarray) -> np.ndarray:
-        """Build a full 30-dim state from a 16-dim observation vector.
-
-        Observed dims are set directly from obs. Unobserved dims use the
-        current UKF estimate (or zeros if not yet initialized).
-        """
-        state = self.filter.get_state().copy()
-        if len(obs) > 0:
-            state[0] = float(obs[0])
-        if len(obs) > 15:
-            state[1] = float(obs[15])  # insulin from observation
-        elif len(obs) > 0:
-            state[1] = 0.013 * max(0.0, float(obs[0]) - 80.0)
-        if len(obs) > 1:
-            state[5] = float(obs[1])
-            state[6] = float(obs[2])
-            state[7] = float(obs[3])
-            state[8] = float(obs[4])
-        if len(obs) > 5:
-            state[9] = float(obs[5])
-            state[10] = float(obs[6])
-            state[11] = float(obs[7])
-            state[12] = float(obs[8])
-        if len(obs) > 9:
-            state[21] = float(obs[9])
-            state[22] = float(obs[10])
-        return state
+        return self.filter.get_state().copy()
 
     def predict(self, n_steps: int = 6) -> Tuple[np.ndarray, np.ndarray]:
         """Predict n steps ahead using ODE-forward propagation from the last observation.
