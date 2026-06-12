@@ -82,7 +82,14 @@ class FieldEncryptor:
         if not HAS_CRYPTO:
             raise ImportError("cryptography package required for HIPAA encryption")
         if master_key is None:
-            master_key = os.environ.get("BIO_MASTER_KEY", "").encode()
+            env_key = os.environ.get("BIO_MASTER_KEY")
+            if env_key is None:
+                # SECURITY FIX: Raise error instead of using insecure empty fallback
+                raise ValueError(
+                    "BIO_MASTER_KEY environment variable is required for HIPAA encryption. "
+                    "Generate a secure 32-byte key and set it before deployment."
+                )
+            master_key = env_key.encode()
         if len(master_key) < 32:
             master_key = hashlib.sha256(master_key).digest()
         else:
@@ -143,7 +150,15 @@ def hash_identifier(identifier: str, salt: Optional[str] = None) -> str:
     approach: hash MRN with a per-deployment salt.
     """
     if salt is None:
-        salt = os.environ.get("BIO_HASH_SALT", "default-salt")
+        env_salt = os.environ.get("BIO_HASH_SALT")
+        if env_salt is None:
+            # SECURITY FIX: Generate a random salt if not configured
+            # This ensures consistent hashing within a deployment session
+            # but produces different results across restarts (acceptable for de-id)
+            import secrets
+            salt = secrets.token_hex(16)
+        else:
+            salt = env_salt
     h = hmac.new(salt.encode(), identifier.encode(), hashlib.sha256)
     return h.hexdigest()[:16]
 
@@ -260,7 +275,14 @@ class AuditLogger:
         self._records: List[Dict] = []
         self._last_hash = "0" * 64
         if hmac_key is None:
-            hmac_key = os.environ.get("BIO_AUDIT_KEY", "default").encode()
+            env_key = os.environ.get("BIO_AUDIT_KEY")
+            if env_key is None:
+                # SECURITY FIX: Raise error instead of using insecure default
+                raise ValueError(
+                    "BIO_AUDIT_KEY environment variable is required for audit logging. "
+                    "Generate a secure key and set it before deployment."
+                )
+            hmac_key = env_key.encode()
         self._hmac_key = hmac_key
 
     def _sign(self, record: Dict) -> str:

@@ -14,7 +14,16 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Bio-Digital Twin API", version="0.9.0")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+# SECURITY FIX: Use explicit allowed origins instead of wildcard
+# In production, set CORS_ORIGINS env var with comma-separated list of allowed origins
+allowed_origins = os.environ.get("CORS_ORIGINS", "http://localhost:3000,http://localhost:8000").split(",")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
+)
 os.makedirs("data", exist_ok=True)
 os.makedirs("models", exist_ok=True)
 
