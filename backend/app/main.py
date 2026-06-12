@@ -28,26 +28,56 @@ if "*" in allowed_origins:
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
         response = await call_next(request)
+        path = request.url.path
+        
         # OWASP-recommended security headers
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-        response.headers["Content-Security-Policy"] = "default-src 'self'; frame-ancestors 'none'"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "accelerometer=(), camera=(), microphone=(), geolocation=()"
+        
+        # SECURITY FIX: More permissive CSP for Swagger UI (/docs)
+        if path.startswith("/docs") or path.startswith("/openapi"):
+            # Allow Swagger UI to function
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; "
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+                "style-src 'self' 'unsafe-inline'; "
+                "img-src 'self' data: blob:; "
+                "font-src 'self'; "
+                "connect-src 'self'; "
+                "frame-ancestors 'none';"
+            )
+        else:
+            # Strict CSP for API responses
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; "
+                "frame-ancestors 'none'; "
+                "base-uri 'self'; "
+                "form-action 'self';"
+            )
+        
         return response
 
 
 # SECURITY FIX: Add API key authentication middleware for sensitive endpoints
-# Endpoints requiring authentication: /phase4/*, /phase5/*, /phase8/*, /personalization/*
+# Endpoints requiring authentication: /phase4/* through /phase16/*, /personalization/*
 class APIKeyAuthMiddleware(BaseHTTPMiddleware):
     # Paths that require authentication
-    PROTECTED_PREFIXES = ["/phase4", "/phase5", "/phase8", "/personalization"]
+    PROTECTED_PREFIXES = [
+        "/phase4", "/phase5", "/phase8", 
+        "/phase9", "/phase10", "/phase11", "/phase12", 
+        "/phase13", "/phase14", "/phase15", "/phase16",
+        "/personalization",
+        "/generate-patients",  # SECURITY: Data modification requires auth
+    ]
     # Paths that are always public (no auth required)
-    PUBLIC_PREFIXES = ["/", "/docs", "/openapi.json", "/health", "/phase1", "/phase2", "/phase3"]
+    PUBLIC_PREFIXES = ["/", "/docs", "/openapi.json", "/health"]
     
     async def dispatch(self, request: Request, call_next) -> Response:
+        import hmac
         path = request.url.path
         
         # Skip auth for public endpoints
@@ -58,6 +88,25 @@ class APIKeyAuthMiddleware(BaseHTTPMiddleware):
         requires_auth = any(path.startswith(p) for p in self.PROTECTED_PREFIXES)
         
         if requires_auth:
+            expected_key = os.environ.get("API_KEY")
+            
+            # SECURITY FIX: Fail-closed if API_KEY not configured in production
+            # Check if we're in production (not dev mode)
+            is_production = os.environ.get("ENVIRONMENT") == "production" or os.environ.get("ENV") == "prod"
+            
+            if not expected_key:
+                if is_production:
+                    # Fail-closed: block request if no API key in production
+                    logger.error("API_KEY not configured in production - blocking request")
+                    return JSONResponse(
+                        status_code=503,
+                        content={"detail": "Authentication not configured. Contact system administrator."}
+                    )
+                else:
+                    # Dev mode: warn and allow (backward compatibility)
+                    logger.warning("API_KEY not configured - authentication disabled (DEVELOPMENT MODE)")
+                    return await call_next(request)
+            
             auth_header = request.headers.get("Authorization")
             if not auth_header:
                 return JSONResponse(
@@ -72,12 +121,9 @@ class APIKeyAuthMiddleware(BaseHTTPMiddleware):
                 )
             
             token = auth_header[7:]  # Remove "Bearer " prefix
-            expected_key = os.environ.get("API_KEY")
             
-            if not expected_key:
-                # If no API key configured, log warning and allow (dev mode)
-                logger.warning("API_KEY not configured - authentication disabled (DEVELOPMENT MODE)")
-            elif token != expected_key:
+            # SECURITY FIX: Use hmac.compare_digest() to prevent timing attacks
+            if not hmac.compare_digest(token, expected_key):
                 return JSONResponse(
                     status_code=403,
                     content={"detail": "Invalid API key"}
