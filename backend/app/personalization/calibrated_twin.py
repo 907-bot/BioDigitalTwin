@@ -118,6 +118,11 @@ class CalibratedTwin:
 
         Uses conformal prediction when calibration data is available.
         Falls back to temperature-scaled Gaussian CI.
+        
+        CRITICAL FIX: Prevents absurdly wide prediction intervals by:
+        1. Capping the conformal quantile to a maximum reasonable value
+        2. Using physiologically-based width limits per variable
+        3. Clamping the final interval to valid physiological ranges
         """
         mu = self._engine.get_twin_state()
         cov = self._engine.get_twin_state_covariance()
@@ -126,24 +131,44 @@ class CalibratedTwin:
         base_std = max(np.sqrt(var), 1.0)
 
         # Scale by horizon (sqrt(t) growth under random walk approximation)
-        # Each integration step adds dt * process_noise to state variance;
-        # over H steps the accumulated variance scales as sqrt(H) * std
         pred_std = base_std * np.sqrt(max(horizon_steps, 1))
 
         if self._is_calibrated:
-            # Apply temperature scaling to variance
             pred_std *= np.sqrt(self._config.temperature)
 
-        # Conformal adjustment (distribution-free)
-        # conformal_quantile is the q-th percentile of |standardized residual|
-        # from the calibration set; multiply by pred_std to recover original units
+        # CRITICAL FIX: Cap conformal quantile to prevent absurdly wide intervals
+        # Maximum reasonable half-width for glucose (mg/dL)
+        max_half_width = {
+            0: 150.0,   # G: max ±150 mg/dL
+            1: 50.0,    # I: max ±50 μU/mL
+            5: 40.0,    # SBP: max ±40 mmHg
+            6: 25.0,    # DBP: max ±25 mmHg
+            7: 30.0,    # HR: max ±30 bpm
+            9: 30.0,    # GFR: max ±30 mL/min
+        }.get(variable_idx, 100.0)
+        
         if self._is_calibrated and self._config.conformal_quantile > 0:
-            half_width = self._config.conformal_quantile * max(pred_std, 5.0)
+            # Cap the conformal quantile to prevent explosion
+            capped_quantile = min(self._config.conformal_quantile, 5.0)
+            half_width = capped_quantile * max(pred_std, 5.0)
+            half_width = min(half_width, max_half_width)
         else:
             z = {0.50: 0.674, 0.80: 1.282, 0.90: 1.645, 0.95: 1.960}.get(level, 1.645)
             half_width = z * max(pred_std, 5.0)
+            half_width = min(half_width, max_half_width)
 
-        return pred - half_width, pred + half_width
+        lo = pred - half_width
+        hi = pred + half_width
+        
+        # CRITICAL FIX: Clamp interval to physiologically valid ranges
+        if variable_idx == 0:  # Glucose
+            lo = max(lo, 50.0)   # Never below 50 mg/dL
+            hi = min(hi, 500.0)  # Never above 500 mg/dL
+        elif variable_idx == 1:  # Insulin
+            lo = max(lo, 0.0)
+            hi = min(hi, 300.0)
+
+        return lo, hi
 
     def calibrate(
         self,

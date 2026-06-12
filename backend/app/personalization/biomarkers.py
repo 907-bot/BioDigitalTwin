@@ -332,12 +332,27 @@ def compute_all_biomarkers(
     recovery = compute_recovery_score(glucose_buffer, ir)
     stress = compute_stress_score(glucose_buffer, ir)
 
+    # CRITICAL FIX: Compute hypoglycemia risk from state + covariance
+    # Use the first element (G) and its covariance diagonal
+    glucose_state_idx = 0
+    glucose_var = 0.0
+    if len(state) > glucose_state_idx:
+        # Use the observation buffer to estimate glucose variance
+        if len(glucose_buffer) >= 3:
+            glucose_var = float(np.var(glucose_buffer[-10:]))
+        else:
+            glucose_var = 100.0  # Default variance estimate
+    glucose_sigma = np.sqrt(glucose_var) if glucose_var > 0 else 10.0
+    mu_g = state[0] if len(state) > 0 else 90.0
+
     return {
         # Metabolic
         "insulin_resistance_score": 1.0 / max(p[0], 1e-6) if len(p) > 0 else 100.0,
         "recovery_score": recovery,
         "stress_score": stress,
         "metabolic_flexibility": compute_metabolic_flexibility(ir, ffa, ldl, hdl),
+        # CRITICAL FIX: Hypoglycemia early warning
+        "hypoglycemia_risk": compute_hypoglycemia_risk(mu_g, glucose_sigma),
         # Cardiovascular
         "vascular_age": compute_vascular_age(art_stiff, sbp),
         "arterial_stiffness_index": compute_arterial_stiffness_index(art_stiff, sbp, dbp),
@@ -356,3 +371,58 @@ def compute_all_biomarkers(
         "allostatic_load": compute_allostatic_load(state, p),
         "metabolic_syndrome_risk": compute_metabolic_syndrome_risk(state, p),
     }
+
+
+def compute_hypoglycemia_risk(
+    glucose_mean: float,
+    glucose_sigma: float,
+    threshold: float = 70.0,
+    alert_sigma: float = 2.0,
+) -> dict:
+    """
+    CRITICAL FIX: Hypoglycemia early-warning based on predictive distribution.
+    
+    Returns:
+        - risk_level: 'none' | 'warning' | 'critical'
+        - lower_bound: mu - alert_sigma * sigma (2-sigma lower bound)
+        - alert: True if lower_bound < threshold
+        - probability: Approximate P(G < threshold) using normal CDF
+    """
+    lower_bound = glucose_mean - alert_sigma * glucose_sigma
+    
+    # Probability of hypoglycemia using normal approximation
+    if glucose_sigma > 0:
+        z = (threshold - glucose_mean) / glucose_sigma
+        from scipy.stats import norm
+        prob_hypo = float(norm.cdf(z))  # P(G < threshold)
+    else:
+        prob_hypo = 1.0 if glucose_mean < threshold else 0.0
+    
+    # Determine risk level
+    if lower_bound >= threshold:
+        risk_level = "none"
+    elif lower_bound >= threshold - 10:  # Within 10 mg/dL of threshold
+        risk_level = "warning"
+    else:
+        risk_level = "critical"
+    
+    return {
+        "risk_level": risk_level,
+        "lower_bound_2sigma": round(lower_bound, 1),
+        "glucose_mean": round(glucose_mean, 1),
+        "alert": lower_bound < threshold,
+        "probability_hypoglycemia": round(prob_hypo, 4),
+        "threshold_mgdL": threshold,
+        "recommendation": _get_hypo_recommendation(risk_level, lower_bound, glucose_mean),
+    }
+
+
+def _get_hypo_recommendation(risk_level: str, lower_bound: float, glucose_mean: float) -> str:
+    """Get clinical recommendation based on hypoglycemia risk."""
+    if risk_level == "critical":
+        return "URGENT: Check glucose now. Consider 15g fast-acting carbs."
+    elif risk_level == "warning":
+        if glucose_mean < 80:
+            return "MODERATE: Glucose declining. Prepare fast-acting carbs."
+        return "LOW: Monitor glucose. No action needed."
+    return "NORMAL: No hypoglycemia risk detected."

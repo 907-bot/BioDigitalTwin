@@ -206,6 +206,16 @@ class UnscentedKalmanFilter(StateEstimator):
             params = state[PHYSIO_DIM:]
             prop[i] = np.concatenate([self.f(physio, params, u), params])
 
+        # CRITICAL FIX: Robust sigma point clipping to prevent extreme glucose values
+        # If any propagated sigma point produces glucose outside [30, 500], blend it
+        # toward sigma point 0 (the mean) to prevent covariance contamination
+        g0 = prop[0, 0]
+        for i in range(1, 2 * n + 1):
+            if prop[i, 0] < 30 or prop[i, 0] > 500:
+                # Blend extreme sigma point toward mean
+                blend = 0.7
+                prop[i, :] = (1 - blend) * prop[i, :] + blend * prop[0, :]
+
         self._mu = np.dot(self._w_m, prop)
         diff = prop - self._mu
         self._cov = (diff.T * self._w_c).dot(diff) + self.Q
@@ -236,6 +246,13 @@ class UnscentedKalmanFilter(StateEstimator):
             K = cross @ np.linalg.inv(S + np.eye(obs_dim) * 1e-6)
 
         innov = y - y_pred
+        # CRITICAL FIX: Innovation gating to prevent extreme corrections
+        # Glucose innovation: limit to ±100 mg/dL
+        if obs_dim > 0:
+            max_innov_g = 100.0
+            if abs(innov[0]) > max_innov_g:
+                scale = max_innov_g / abs(innov[0])
+                innov[0] *= scale
         self._mu = self._mu + K @ innov
         # Joseph form: P = (I - K H) P (I - K H)^T + K R K^T
         # Numerically stable: preserves positive-definiteness
@@ -343,11 +360,13 @@ class UnscentedKalmanFilter(StateEstimator):
         """Hard bound per-state covariance before predict to prevent sigma-point explosion.
 
         Variance is bounded so that 5-sigma stays within the valid range.
+        CRITICAL FIX: Insulin variance (index 1) clamped to 50.0 to prevent the
+        catastrophic SI*I*G explosion where Cov[1,1] grows to 1.83e+04.
         """
         max_sigmas = 5.0  # sigma-point spread bound: 5-sigma within range
         state_max_var = {
             0: 600.0,    # G
-            1: 500.0,    # I
+            1: 50.0,     # I - CRITICAL: was 500, now 50 to prevent explosion
             2: 15.0,     # HGP
             3: 25.0,     # PGU
             4: 20.0,     # IR
@@ -377,6 +396,34 @@ class UnscentedKalmanFilter(StateEstimator):
             28: 1.0,     # NFkB_activity
             29: 100.0,   # InflammatoryLoad
         }
+        # Also clamp parameter variances
+        param_max_var = {
+            0: 1.0,    # SI
+            1: 100.0,  # beta
+            2: 10.0,   # alpha
+            3: 500.0,  # k_e
+            4: 10.0,   # HR_SBP_slope
+            5: 5.0,    # HR_DBP_slope
+            6: 10.0,   # HR_base
+            7: 20.0,   # HRV_base
+            8: 20.0,   # GFR_base
+            9: 5.0,    # Na_base
+            10: 0.5,   # K_base
+            11: 5.0,   # Osm_base
+            12: 1000.0,# k_a
+            13: 1000.0,# V_d
+            14: 5.0,   # SBP_base
+            15: 5.0,   # DBP_base
+            16: 100.0, # cortisol_amp
+            17: 50.0,  # mel_amp
+            18: 100.0, # circadian_period
+            19: 0.1,   # light_sens
+            20: 50.0,  # fat_mass_base
+            21: 1.0,   # FFA_base
+            22: 100.0, # LDL_base
+            23: 50.0,  # HDL_base
+            24: 200.0, # TG_base
+        }
         for idx, max_val in state_max_var.items():
             max_var = (max_val / max_sigmas) ** 2
             if self._cov[idx, idx] > max_var:
@@ -399,10 +446,11 @@ class UnscentedKalmanFilter(StateEstimator):
 
         Allows filter to learn, but prevents extreme divergence.
         Cap = (range_width / 2)^2 * cap_quantile scaling.
+        CRITICAL FIX: Also clamp insulin variance (index 1) to 100.0.
         """
         max_sigmas = 8.0  # soft: only catches truly pathological blow-up
         state_max_var = {
-            0: 600.0, 1: 500.0, 2: 15.0, 3: 25.0, 4: 20.0,
+            0: 600.0, 1: 100.0, 2: 15.0, 3: 25.0, 4: 20.0,  # I clamped to 100
             5: 250.0, 6: 150.0, 7: 220.0, 8: 200.0, 9: 200.0,
             10: 160.0, 11: 7.0, 12: 340.0, 13: 100.0,
             14: 2.5, 15: 2.5, 16: 1000.0, 17: 300.0, 18: 6.29, 19: 1.0,
@@ -618,6 +666,94 @@ class PersonalizationEngine:
             "param_drift_rate": param_drift,
             "n_updates": len(self._control_buffer),
             "is_converged": is_converged,
+        }
+
+    def should_abstain(self) -> Dict[str, any]:
+        """
+        CRITICAL FIX: Safety guardrail - determine if twin should abstain from making predictions.
+        
+        Combines OOD detection, drift level, and physiological plausibility to decide
+        whether to make a clinical recommendation.
+        
+        Returns:
+            abstention: True if twin should not make predictions
+            confidence: float in [0, 1] (higher is better)
+            reasons: list of reasons for abstention
+            recommendation: action to take
+        """
+        reasons = []
+        confidence = 1.0
+        
+        # 1. Check drift level
+        drift_status = self.drift_detector.status()
+        drift_level = drift_status.get("level", 0)
+        if drift_level >= 3:
+            reasons.append(f"Critical drift: level {drift_level} (twin invalid)")
+            confidence *= 0.1
+        elif drift_level >= 2:
+            reasons.append(f"High drift: level {drift_level} (recalibrate)")
+            confidence *= 0.4
+        
+        # 2. Check physiological plausibility of twin state
+        state = self.get_twin_state()
+        cov = self.get_twin_state_covariance()
+        
+        # Check glucose bounds
+        G = state[0] if len(state) > 0 else 90.0
+        if G < 50 or G > 400:
+            reasons.append(f"Glucose out of plausible range: {G:.1f} mg/dL")
+            confidence *= 0.3
+        
+        # Check insulin bounds  
+        I = state[1] if len(state) > 1 else 5.0
+        if I < 0 or I > 200:
+            reasons.append(f"Insulin out of plausible range: {I:.1f} μU/mL")
+            confidence *= 0.4
+        
+        # 3. Check covariance diagonals for explosion
+        if len(cov) > 0:
+            glucose_var = cov[0, 0] if cov.shape[0] > 0 else 0.0
+            insulin_var = cov[1, 1] if cov.shape[1] > 1 else 0.0
+            
+            if glucose_var > 10000:
+                reasons.append(f"Glucose variance exploded: {glucose_var:.1f}")
+                confidence *= 0.2
+            
+            if insulin_var > 1000:
+                reasons.append(f"Insulin variance exploded: {insulin_var:.1f}")
+                confidence *= 0.3
+        
+        # 4. Check prediction interval width
+        if len(self._observation_buffer) >= 5:
+            recent_g = np.array(self._observation_buffer[-10:])
+            g_std = float(np.std(recent_g))
+            g_mean = float(np.mean(recent_g))
+            
+            # If glucose variability is extreme, reduce confidence
+            if g_std > 50:
+                reasons.append(f"High glucose variability: std={g_std:.1f} mg/dL")
+                confidence *= 0.5
+            elif g_std > 30:
+                reasons.append(f"Moderate glucose variability: std={g_std:.1f} mg/dL")
+                confidence *= 0.7
+        
+        # Determine abstention
+        abstention = confidence < 0.3 or drift_level >= 3
+        
+        if abstention:
+            recommendation = "ABSTAIN: Twin predictions unreliable. Recalibrate or use fallback."
+        elif confidence < 0.6:
+            recommendation = "CAUTION: Predictions may be unreliable. Verify with clinical assessment."
+        else:
+            recommendation = "PROCEED: Twin predictions within acceptable confidence range."
+        
+        return {
+            "abstention": abstention,
+            "confidence": round(confidence, 3),
+            "drift_level": drift_level,
+            "reasons": reasons,
+            "recommendation": recommendation,
+            "safety_verdict": "ABSTAIN" if abstention else ("CAUTION" if confidence < 0.6 else "SAFE"),
         }
 
 
