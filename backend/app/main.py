@@ -30,20 +30,19 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         path = request.url.path
         
-        # OWASP-recommended security headers
+        # OWASP-recommended security headers (X-XSS-Protection removed - deprecated)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
-        response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "accelerometer=(), camera=(), microphone=(), geolocation=()"
         
         # SECURITY FIX: More permissive CSP for Swagger UI (/docs)
         if path.startswith("/docs") or path.startswith("/openapi"):
-            # Allow Swagger UI to function
+            # Allow Swagger UI to function (inline required for OpenAPI spec rendering)
             response.headers["Content-Security-Policy"] = (
                 "default-src 'self'; "
-                "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+                "script-src 'self' 'unsafe-inline'; "
                 "style-src 'self' 'unsafe-inline'; "
                 "img-src 'self' data: blob:; "
                 "font-src 'self'; "
