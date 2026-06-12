@@ -20,7 +20,14 @@ backend/env/
 .Trashes
 
 # Project Specific
+# SECURITY FIX: Include all .env variants to prevent credential leaks
 .env
+.env.*
+*.env
+.env.local
+.env.production
+.env.staging
+.env.development
 *.log
 data/
 backend/data/*.csv

@@ -149,14 +149,23 @@ def hash_identifier(identifier: str, salt: Optional[str] = None) -> str:
     is de-identified per Expert Determination. This is a defensive
     approach: hash MRN with a per-deployment salt.
     """
+    import secrets
+    import logging
+    _logger = logging.getLogger(__name__)
+    
     if salt is None:
         env_salt = os.environ.get("BIO_HASH_SALT")
         if env_salt is None:
             # SECURITY FIX: Generate a random salt if not configured
             # This ensures consistent hashing within a deployment session
             # but produces different results across restarts (acceptable for de-id)
-            import secrets
             salt = secrets.token_hex(16)
+            # SECURITY FIX: Log WARNING to alert operators of ephemeral salt
+            _logger.warning(
+                "BIO_HASH_SALT not set. Using ephemeral random salt. "
+                "De-identification hashes will NOT be consistent across restarts. "
+                "Set BIO_HASH_SALT environment variable for production deployments."
+            )
         else:
             salt = env_salt
     h = hmac.new(salt.encode(), identifier.encode(), hashlib.sha256)
