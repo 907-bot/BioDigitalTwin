@@ -1,35 +1,35 @@
 {
   "n_patients": 5,
   "n_total": 5,
-  "rmse_1step_mean": 12.719858418505272,
-  "rmse_1step_std": 2.0235407057607873,
-  "rmse_6step_mean": 13.122324930309977,
-  "rmse_24step_mean": 11.05993360997544,
-  "pi80_coverage_mean": 0.7238095238095238,
-  "pi95_coverage_mean": 0.8825396825396824,
-  "counterfactual_ate_rmse": 16.977417520464364,
-  "counterfactual_ate_bias_mean": -5.389289464086383,
+  "rmse_1step_mean": 12.716033614288301,
+  "rmse_1step_std": 1.9704625391399078,
+  "rmse_6step_mean": 13.05964748006539,
+  "rmse_24step_mean": 11.166268064964374,
+  "pi80_coverage_mean": 0.726984126984127,
+  "pi95_coverage_mean": 0.8857142857142856,
+  "counterfactual_ate_rmse": 14.80585776706569,
+  "counterfactual_ate_bias_mean": 6.814852329197374,
   "convergence_rate": 1.0,
   "baseline_rmse_1step": 12.764347620643269,
   "baseline_rmse_6step": 12.939913981989164,
   "baseline_rmse_24step": 13.191601165434431,
-  "improvement_over_baseline_1step": 0.3485427023786736,
-  "improvement_over_baseline_6step": -1.4096766684439155,
-  "improvement_over_baseline_24step": 16.159278382707154,
-  "clarke_zone_a_mean": 85.07936507936508,
+  "improvement_over_baseline_1step": 0.37850744739066355,
+  "improvement_over_baseline_6step": -0.9253036630914258,
+  "improvement_over_baseline_24step": 15.353201442876996,
+  "clarke_zone_a_mean": 84.44444444444443,
   "clarke_zone_ab_mean": 95.23809523809523,
-  "mard_mean": 11.200765210043897,
+  "mard_mean": 11.213728512726732,
   "by_diabetes_type": {
     "T2DM": {
       "n": 1,
-      "rmse_1step": 16.393461395125716,
-      "pi80_coverage": 0.8095238095238095
+      "rmse_1step": 16.281487122877493,
+      "pi80_coverage": 0.7777777777777778
     },
     "none": {
       "n": 4,
-      "rmse_1step": 11.80145767435016,
-      "pi80_coverage": 0.7023809523809524
+      "rmse_1step": 11.824670237141003,
+      "pi80_coverage": 0.7142857142857143
     }
   },
-  "elapsed_s": 271.00067615509033
+  "elapsed_s": 120.81197714805603
 }

@@ -1,20 +1,162 @@
 """
 Bio-Digital Twin  —  Phases 1-8 API
 """
-from fastapi import FastAPI, HTTPException, Query, BackgroundTasks, Body
+from fastapi import FastAPI, HTTPException, Query, BackgroundTasks, Body, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response, JSONResponse
 import pandas as pd
 import numpy as np
 from datetime import datetime
 import os
+import re
 import logging
 from typing import Optional
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# SECURITY FIX: Validate CORS origins at startup
+allowed_origins = os.environ.get("CORS_ORIGINS", "http://localhost:3000,http://localhost:8000").split(",")
+if "*" in allowed_origins:
+    raise ValueError(
+        "Wildcard CORS origin '*' is forbidden when allow_credentials=True. "
+        "Set CORS_ORIGINS to explicit origin list."
+    )
+
+# SECURITY FIX: Add security headers middleware
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next) -> Response:
+        response = await call_next(request)
+        path = request.url.path
+        
+        # OWASP-recommended security headers (X-XSS-Protection removed - deprecated)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "accelerometer=(), camera=(), microphone=(), geolocation=()"
+        
+        # SECURITY FIX: More permissive CSP for Swagger UI (/docs)
+        if path.startswith("/docs") or path.startswith("/openapi"):
+            # Allow Swagger UI to function (inline required for OpenAPI spec rendering)
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; "
+                "script-src 'self' 'unsafe-inline'; "
+                "style-src 'self' 'unsafe-inline'; "
+                "img-src 'self' data: blob:; "
+                "font-src 'self'; "
+                "connect-src 'self'; "
+                "frame-ancestors 'none';"
+            )
+        else:
+            # Strict CSP for API responses
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; "
+                "frame-ancestors 'none'; "
+                "base-uri 'self'; "
+                "form-action 'self';"
+            )
+        
+        return response
+
+
+# SECURITY FIX: Add API key authentication middleware for sensitive endpoints
+# Endpoints requiring authentication: /phase4/* through /phase16/*, /personalization/*
+class APIKeyAuthMiddleware(BaseHTTPMiddleware):
+    # Paths that require authentication
+    PROTECTED_PREFIXES = [
+        "/phase4", "/phase5", "/phase8", 
+        "/phase9", "/phase10", "/phase11", "/phase12", 
+        "/phase13", "/phase14", "/phase15", "/phase16",
+        "/personalization",
+        "/generate-patients",  # SECURITY: Data modification requires auth
+    ]
+    # Paths that are always public (no auth required)
+    PUBLIC_PREFIXES = ["/", "/docs", "/openapi.json", "/health"]
+    
+    async def dispatch(self, request: Request, call_next) -> Response:
+        import hmac
+        path = request.url.path
+        
+        # Skip auth for public endpoints
+        if any(path.startswith(p) for p in self.PUBLIC_PREFIXES):
+            return await call_next(request)
+        
+        # Check if endpoint requires auth
+        requires_auth = any(path.startswith(p) for p in self.PROTECTED_PREFIXES)
+        
+        if requires_auth:
+            expected_key = os.environ.get("API_KEY")
+            
+            # SECURITY FIX: Fail-closed if API_KEY not configured in production
+            # Check if we're in production (not dev mode)
+            is_production = os.environ.get("ENVIRONMENT") == "production" or os.environ.get("ENV") == "prod"
+            
+            if not expected_key:
+                if is_production:
+                    # Fail-closed: block request if no API key in production
+                    logger.error("API_KEY not configured in production - blocking request")
+                    return JSONResponse(
+                        status_code=503,
+                        content={"detail": "Authentication not configured. Contact system administrator."}
+                    )
+                else:
+                    # Dev mode: warn and allow (backward compatibility)
+                    logger.warning("API_KEY not configured - authentication disabled (DEVELOPMENT MODE)")
+                    return await call_next(request)
+            
+            auth_header = request.headers.get("Authorization")
+            if not auth_header:
+                return JSONResponse(
+                    status_code=401,
+                    content={"detail": "Missing Authorization header. Required for this endpoint."}
+                )
+            
+            if not auth_header.startswith("Bearer "):
+                return JSONResponse(
+                    status_code=401,
+                    content={"detail": "Invalid Authorization header format. Expected: Bearer <token>"}
+                )
+            
+            token = auth_header[7:]  # Remove "Bearer " prefix
+            
+            # SECURITY FIX: Use hmac.compare_digest() to prevent timing attacks
+            if not hmac.compare_digest(token, expected_key):
+                return JSONResponse(
+                    status_code=403,
+                    content={"detail": "Invalid API key"}
+                )
+        
+        return await call_next(request)
+
+# SECURITY FIX: Input validation helpers
+PATIENT_ID_PATTERN = re.compile(r"^P\d{6}$")
+def validate_patient_id(patient_id: str) -> str:
+    """Validate patient_id format to prevent log injection and path traversal."""
+    if not PATIENT_ID_PATTERN.match(patient_id):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid patient_id format. Expected: P followed by 6 digits (e.g., P000001)"
+        )
+    return patient_id
+
 app = FastAPI(title="Bio-Digital Twin API", version="0.9.0")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
+# Add security headers first (outermost)
+app.add_middleware(SecurityHeadersMiddleware)
+
+# Add API key auth middleware (for sensitive endpoints)
+app.add_middleware(APIKeyAuthMiddleware)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
+)
 os.makedirs("data", exist_ok=True)
 os.makedirs("models", exist_ok=True)
 
@@ -183,7 +325,8 @@ def train_gnn_endpoint(background_tasks: BackgroundTasks, epochs: int = Query(10
     return {"status": "success", **result}
 
 @app.get("/phase2/similar-patients/{patient_id}")
-def similar_patients(patient_id: str, k: int = Query(10, ge=1, le=50), source: str = Query("graph", pattern="^(graph|embedding)$")):
+def similar_patients(patient_id: str = Query(..., description="Patient ID (format: P followed by 6 digits)"), k: int = Query(10, ge=1, le=50), source: str = Query("graph", pattern="^(graph|embedding)$")):
+    patient_id = validate_patient_id(patient_id)
     if source == "embedding":
         try:
             from .graph.trainer import get_top_k_similar_by_embedding
@@ -206,7 +349,8 @@ def similar_patients(patient_id: str, k: int = Query(10, ge=1, le=50), source: s
     return {"patient_id": patient_id, "source": "graph_edges", "k": len(merged), "similar_patients": merged.drop(columns=["patient_id"]).to_dict(orient="records")}
 
 @app.get("/phase2/patient-subgraph/{patient_id}")
-def patient_subgraph(patient_id: str, depth: int = Query(1, ge=1, le=2), max_nodes: int = Query(30, ge=5, le=100)):
+def patient_subgraph(patient_id: str = Query(..., description="Patient ID (format: P followed by 6 digits)"), depth: int = Query(1, ge=1, le=2), max_nodes: int = Query(30, ge=5, le=100)):
+    patient_id = validate_patient_id(patient_id)
     edge_path = "data/patient_edges.csv"
     if not os.path.exists(edge_path):
         raise HTTPException(status_code=404, detail="Edge list not found. Call POST /phase2/build-graph first.")
@@ -246,7 +390,8 @@ def patient_subgraph(patient_id: str, depth: int = Query(1, ge=1, le=2), max_nod
     return {"center_patient": patient_id, "depth": depth, "nodes": nodes, "edges": unique_edges, "node_count": len(nodes), "edge_count": len(unique_edges)}
 
 @app.get("/phase2/embedding/{patient_id}")
-def get_patient_embedding(patient_id: str):
+def get_patient_embedding(patient_id: str = Query(..., description="Patient ID (format: P followed by 6 digits)")):
+    patient_id = validate_patient_id(patient_id)
     try:
         from .graph.trainer import get_embedding
         embedding = get_embedding(patient_id)
@@ -435,7 +580,7 @@ def simulate(req: SimulateRequest):
 
 @app.get("/phase3/patients/{patient_id}/simulate")
 def simulate_patient(
-    patient_id: str,
+    patient_id: str = Query(..., description="Patient ID (format: P followed by 6 digits)"),
     disease: str = Query("t2d"),
     horizon_days: int = Query(365, ge=1, le=1825),
     intervention_name: Optional[str] = Query(None),
@@ -443,6 +588,7 @@ def simulate_patient(
     dt_hours: float = Query(6.0, gt=0, le=48),
     rng_seed: int = Query(0),
 ):
+    patient_id = validate_patient_id(patient_id)
     csv_path = "data/synthetic_patients.csv"
     if not os.path.exists(csv_path):
         raise HTTPException(status_code=404, detail="no synthetic patients — call POST /generate-patients first")

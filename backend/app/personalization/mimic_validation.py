@@ -96,7 +96,7 @@ class MIMICValidationPipeline:
         n_train = int(n_total * self.train_frac)
         n_test = n_total - n_train
         # Train
-        engine = create_dual_engine()
+        engine = create_dual_engine(patient_has_diabetes=patient.profile.has_diabetes)
         engine.initialize(patient.observations[0])
         for t in range(1, n_train):
             engine.update(patient.observations[t])
