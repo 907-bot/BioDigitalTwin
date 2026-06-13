@@ -926,3 +926,51 @@ from app.personalization import phase5_router  # noqa: E402
 app.include_router(phase5_router)
 
 
+
+
+# =============================================================================
+# Clinical Validation & Compliance Endpoints
+# =============================================================================
+
+@app.get("/clinical/validation")
+def get_clinical_validation_info():
+    """
+    Return clinical validation status and evidence levels for transparency.
+    
+    IMPORTANT: This endpoint is for transparency only. All clinical decisions
+    must involve qualified healthcare professionals.
+    """
+    from app.clinical_validation import VALIDATION_STATUS, TREATMENT_EVIDENCE, EVIDENCE_LEVELS, UNCERTAINTY_GUIDANCE
+    return {
+        "model_validation_status": VALIDATION_STATUS,
+        "treatment_evidence_levels": TREATMENT_EVIDENCE,
+        "evidence_level_definitions": EVIDENCE_LEVELS,
+        "uncertainty_communication": UNCERTAINTY_GUIDANCE.strip(),
+        "disclaimer": (
+            "This system provides computational predictions for clinical decision support. "
+            "All recommendations must be reviewed by qualified healthcare professionals. "
+            "This system is not a medical device and is not FDA cleared for clinical use."
+        )
+    }
+
+
+@app.get("/compliance/hipaa")
+def get_hipaa_compliance_info():
+    """
+    Return HIPAA technical safeguards implementation information.
+    
+    NOTE: This describes technical safeguards only. Organizational and 
+    administrative safeguards must be implemented separately.
+    """
+    from app.hipaa_compliance import TECHNICAL_SAFEGUARDS, SOC2_ALIGNMENT, INFORMED_CONSENT, PHI_FIELDS
+    return {
+        "technical_safeguards": TECHNICAL_SAFEGUARDS,
+        "soc2_alignment": SOC2_ALIGNMENT,
+        "phi_field_classification": PHI_FIELDS,
+        "informed_consent_handling": INFORMED_CONSENT.strip(),
+        "disclaimer": (
+            "Technical safeguards do not guarantee HIPAA compliance. "
+            "Organizations must conduct risk assessments and implement "
+            "administrative and physical safeguards per 45 CFR Part 164."
+        )
+    }
