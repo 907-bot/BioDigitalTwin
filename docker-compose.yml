@@ -142,7 +142,21 @@ services:
       - redis_data:/data
     command: redis-server --appendonly yes
 
+  # Phase 17 — MIMIC-IV Database (for external validation)
+  mimic_iv:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: mimiciv
+      POSTGRES_USER: mimic
+      POSTGRES_PASSWORD: mimic_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - mimic_data:/var/lib/postgresql/data
+    # Note: MIMIC-IV data must be loaded separately via PhysioNet credentialing
+
 volumes:
   postgres_data:
   neo4j_data:
   redis_data:
+  mimic_data:

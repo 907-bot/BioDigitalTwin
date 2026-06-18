@@ -926,3 +926,10 @@ from app.personalization import phase5_router  # noqa: E402
 app.include_router(phase5_router)
 
 
+# =============================================================================
+# Phase 17 — Twin Persistence, Wearable Integration, MIMIC-IV, Clinical Study, FDA
+# =============================================================================
+from app.phase17 import router as phase17_router  # noqa: E402
+app.include_router(phase17_router)
+
+

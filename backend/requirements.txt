@@ -37,3 +37,23 @@ ctgan>=0.9.0,<0.10
 
 # Phase 8-14 — Drug discovery & advancements
 rdkit-pypi==2022.9.5
+
+# Phase 17 — Twin Persistence & Wearable Integration
+redis==5.0.8
+asyncpg==0.29.0
+filterpy==1.4.5
+pymc==5.16.0
+arviz==0.18.0
+fhir.resources==9.0.0
+pydantic-fhir==0.4.0
+samsung-health==0.1.0
+bleak==0.21.1
+websockets==12.0
+
+# MIMIC-IV Integration
+physionet-zip==1.0.0
+mimic-code==1.0.0
+
+# Clinical Study & Regulatory
+study-design==0.1.0
+clinical-trials-gov==0.2.0
