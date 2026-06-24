@@ -1,44 +1,328 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Root & Color Scheme ───────────────────────────────── */
 :root {
   color-scheme: dark;
+  --teal:   #00d4a0;
+  --teal-2: #00b887;
+  --cyan:   #00bcd4;
+  --purple: #a78bfa;
+  --coral:  #ff6b5b;
+  --amber:  #ffa94d;
 }
 
 html, body {
-  background: #0b0f17;
-  color: #e5e7eb;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-               Oxygen, Ubuntu, Cantarell, sans-serif;
+  background: #070c14;
+  color: #e2eaf5;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 * { box-sizing: border-box; }
+*:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; border-radius: 4px; }
 
-.btn {
-  @apply px-3 py-1.5 rounded-md text-sm font-medium border border-border
-         bg-panel2 hover:bg-panel transition-colors disabled:opacity-50
-         disabled:cursor-not-allowed;
+/* ─── Scrollbar ─────────────────────────────────────────── */
+::-webkit-scrollbar       { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #1e2d42; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #253548; }
+
+/* ─── Glass Cards ───────────────────────────────────────── */
+.glass {
+  background: rgba(15, 25, 41, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(30, 45, 66, 0.8);
+  border-radius: 12px;
 }
-.btn-primary {
-  @apply px-3 py-1.5 rounded-md text-sm font-medium bg-teal/20 text-teal
-         border border-teal/40 hover:bg-teal/30 transition-colors;
+
+.glass-hover {
+  transition: all 0.25s ease;
 }
-.input, .select {
-  @apply bg-panel2 border border-border rounded-md px-3 py-1.5 text-sm
-         text-text outline-none focus:border-teal/60;
+.glass-hover:hover {
+  background: rgba(21, 32, 53, 0.9);
+  border-color: rgba(0, 212, 160, 0.25);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 212, 160, 0.1);
 }
+
+/* ─── Card Component ────────────────────────────────────── */
 .card {
-  @apply bg-panel border border-border rounded-lg p-4;
+  background: linear-gradient(135deg, rgba(15,25,41,0.95) 0%, rgba(13,20,34,0.95) 100%);
+  border: 1px solid #1e2d42;
+  border-radius: 12px;
+  padding: 1.25rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
+.card:hover {
+  border-color: rgba(0, 212, 160, 0.2);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+.card-glow {
+  background: linear-gradient(135deg, rgba(0,212,160,0.05) 0%, rgba(15,25,41,0.95) 60%);
+  border-color: rgba(0, 212, 160, 0.2);
+}
+
+/* ─── Buttons ───────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid #1e2d42;
+  background: #0f1929;
+  color: #7a93b0;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+.btn:hover:not(:disabled) {
+  background: #152035;
+  color: #e2eaf5;
+  border-color: #253548;
+}
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  background: linear-gradient(135deg, rgba(0,212,160,0.15) 0%, rgba(0,188,143,0.1) 100%);
+  color: #00d4a0;
+  border: 1px solid rgba(0, 212, 160, 0.35);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(0,212,160,0.25) 0%, rgba(0,188,143,0.2) 100%);
+  border-color: rgba(0, 212, 160, 0.6);
+  box-shadow: 0 0 16px rgba(0, 212, 160, 0.2);
+}
+.btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.btn-danger {
+  background: rgba(248,113,113,0.1);
+  color: #f87171;
+  border-color: rgba(248,113,113,0.3);
+}
+.btn-danger:hover:not(:disabled) {
+  background: rgba(248,113,113,0.2);
+  border-color: rgba(248,113,113,0.5);
+}
+
+/* ─── Form Controls ─────────────────────────────────────── */
+.input, .select {
+  background: #0d1422;
+  border: 1px solid #1e2d42;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #e2eaf5;
+  outline: none;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  width: 100%;
+}
+.input:focus, .select:focus {
+  border-color: rgba(0, 212, 160, 0.5);
+  box-shadow: 0 0 0 3px rgba(0, 212, 160, 0.08);
+}
+.input::placeholder { color: #4d6580; }
+.select { cursor: pointer; }
+
+/* ─── Labels ────────────────────────────────────────────── */
 .label {
-  @apply text-xs uppercase tracking-wider text-muted font-medium;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7a93b0;
 }
+
+/* ─── Chips / Badges ────────────────────────────────────── */
 .chip {
-  @apply inline-block px-2 py-0.5 rounded text-xs font-medium;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
 }
-.chip-low      { @apply bg-teal/20 text-teal border border-teal/30; }
-.chip-moderate { @apply bg-amber/20 text-amber border border-amber/30; }
-.chip-high     { @apply bg-coral/20 text-coral border border-coral/30; }
-.chip-critical { @apply bg-red/20 text-red border border-red/30; }
-.chip-info     { @apply bg-purple/20 text-purple border border-purple/30; }
+.chip-low      { background: rgba(0,212,160,0.12); color: #00d4a0; border: 1px solid rgba(0,212,160,0.25); }
+.chip-moderate { background: rgba(255,169,77,0.12); color: #ffa94d; border: 1px solid rgba(255,169,77,0.25); }
+.chip-high     { background: rgba(255,107,91,0.12); color: #ff6b5b; border: 1px solid rgba(255,107,91,0.25); }
+.chip-critical { background: rgba(248,113,113,0.15); color: #f87171; border: 1px solid rgba(248,113,113,0.3); }
+.chip-info     { background: rgba(167,139,250,0.12); color: #a78bfa; border: 1px solid rgba(167,139,250,0.25); }
+.chip-healthy  { background: rgba(74,222,128,0.12); color: #4ade80; border: 1px solid rgba(74,222,128,0.25); }
+.chip-online   { background: rgba(0,212,160,0.12); color: #00d4a0; border: 1px solid rgba(0,212,160,0.3); }
+
+/* ─── Stat Component ────────────────────────────────────── */
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #e2eaf5;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.stat-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7a93b0;
+}
+.stat-unit {
+  font-size: 13px;
+  font-weight: 400;
+  color: #4d6580;
+  margin-left: 3px;
+}
+
+/* ─── Glow Effects ──────────────────────────────────────── */
+.glow-teal  { box-shadow: 0 0 20px rgba(0,212,160,0.25); }
+.glow-purple{ box-shadow: 0 0 20px rgba(167,139,250,0.25); }
+.glow-cyan  { box-shadow: 0 0 20px rgba(0,188,212,0.25); }
+
+.text-gradient-teal {
+  background: linear-gradient(135deg, #00d4a0 0%, #00bcd4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.text-gradient-purple {
+  background: linear-gradient(135deg, #a78bfa 0%, #7c6df0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Pulse Dot ─────────────────────────────────────────── */
+.pulse-dot {
+  position: relative;
+  display: inline-flex;
+  width: 8px;
+  height: 8px;
+}
+.pulse-dot::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--teal);
+  animation: pulse-ring 1.5s ease-out infinite;
+}
+.pulse-dot::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: 50%;
+  background: var(--teal);
+}
+@keyframes pulse-ring {
+  0%   { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+/* ─── Section Dividers ──────────────────────────────────── */
+.section-divider {
+  border: none;
+  border-top: 1px solid #1e2d42;
+  margin: 24px 0;
+}
+
+/* ─── Grid Background ───────────────────────────────────── */
+.bg-grid {
+  background-image: radial-gradient(circle, rgba(30,45,66,0.5) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* ─── Phase Number Badge ────────────────────────────────── */
+.phase-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: "JetBrains Mono", monospace;
+  background: rgba(0, 212, 160, 0.1);
+  color: #00d4a0;
+  border: 1px solid rgba(0, 212, 160, 0.2);
+  flex-shrink: 0;
+}
+.phase-badge-adv {
+  background: rgba(167,139,250,0.1);
+  color: #a78bfa;
+  border-color: rgba(167,139,250,0.2);
+}
+
+/* ─── Module Card ───────────────────────────────────────── */
+.module-card {
+  display: block;
+  background: linear-gradient(135deg, rgba(15,25,41,0.95) 0%, rgba(13,20,34,0.95) 100%);
+  border: 1px solid #1e2d42;
+  border-radius: 12px;
+  padding: 1.1rem 1.25rem;
+  text-decoration: none;
+  transition: all 0.22s ease;
+  position: relative;
+  overflow: hidden;
+}
+.module-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(0,212,160,0.04) 0%, transparent 60%);
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+.module-card:hover::before { opacity: 1; }
+.module-card:hover {
+  border-color: rgba(0, 212, 160, 0.25);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(0,212,160,0.08);
+}
+.module-card-adv::before {
+  background: linear-gradient(135deg, rgba(167,139,250,0.04) 0%, transparent 60%);
+}
+.module-card-adv:hover {
+  border-color: rgba(167,139,250,0.25);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(167,139,250,0.08);
+}
+
+/* ─── Status Indicator ──────────────────────────────────── */
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #7a93b0;
+}
+
+/* ─── Recharts Tweaks ───────────────────────────────────── */
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke: #1e2d42 !important;
+}
+.recharts-text { fill: #7a93b0 !important; font-size: 11px !important; }
+.recharts-tooltip-wrapper { outline: none !important; }
+
+/* ─── Transitions ───────────────────────────────────────── */
+.transition-all { transition: all 0.22s ease; }
+.animate-fade-in { animation: fadeIn 0.4s ease-out both; }
+.animate-slide-in { animation: slideIn 0.3s ease-out both; }

@@ -77,7 +77,7 @@ class TwinStateResponse(BaseModel):
     twin_state: Dict[str, float]
     parameters: Dict[str, float]
     subsystems: Dict[str, Any]
-    digital_biomarkers: Dict[str, float]
+    digital_biomarkers: Dict[str, Any]
     uncertainty: Dict[str, Any]
     drift_status: Dict[str, Any]
 

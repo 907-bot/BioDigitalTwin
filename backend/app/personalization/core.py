@@ -527,6 +527,7 @@ class PersonalizationEngine:
         self._control_buffer: List[dict] = []
         self.drift_detector = DriftDetector()
         self.is_initialized = False
+        self._update_count: int = 0  # warmup: skip drift for first few updates
 
     def _sample_param_prior(self) -> np.ndarray:
         if self._subgroup_priors is not None:
@@ -572,14 +573,18 @@ class PersonalizationEngine:
             self._full_obs_buffer.append(observation.copy())
             self._control_buffer.append(control_input)
         self.filter.predict(control_input)
-        if len(observation) > 0 and self.drift_detector.can_run_counterfactuals:
+        self._update_count += 1
+        # Skip drift checks during warmup (first 15 updates) so the UKF converges
+        if (self._update_count > 15 and
+                len(observation) > 0 and
+                self.drift_detector.can_run_counterfactuals):
             pred_mean, pred_unc = self.filter.get_predicted_obs_stats()
             self.drift_detector.check(float(observation[0]), pred_mean, pred_unc)
         # Pad partial observations to OBS_DIM with reasonable defaults
         if len(observation) < OBS_DIM:
             padded = np.array([100.0, 120.0, 80.0, 72.0, 42.0,
                                90.0, 140.0, 4.2, 300.0, 0.5,
-                               120.0, 50.0, 150.0, 10.0, 0.3, 5.0])
+                               120.0, 50.0, 150.0, 10.0, 0.3])
             padded[:len(observation)] = observation
             observation = padded
         self.filter.update(observation)

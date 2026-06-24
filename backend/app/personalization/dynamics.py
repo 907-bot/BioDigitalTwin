@@ -600,7 +600,7 @@ def full_dynamics(
 
 def full_observation(state_arr: np.ndarray) -> np.ndarray:
     """
-    Return observable quantities (16-dim).
+    Return observable quantities (15-dim).
 
     Indices:
       0: glucose (CGM)
@@ -618,26 +618,24 @@ def full_observation(state_arr: np.ndarray) -> np.ndarray:
       12: TG (lab)
       13: cortisol (lab/salivary)
       14: sleep_pressure (self-report / actigraphy)
-      15: insulin (fasting insulin / HOMA-IR)
     """
     ft = Phase3TwinState.from_array(state_arr)
     return np.array([
-        ft.metabolic.G,           # 0
-        ft.cardio.SBP,            # 1
-        ft.cardio.DBP,            # 2
-        ft.cardio.HR,             # 3
-        ft.cardio.HRV,            # 4
-        ft.renal.GFR,             # 5
-        ft.renal.Na,              # 6
-        ft.renal.K,               # 7
-        ft.renal.Osm,             # 8
-        ft.adipose.FFA,           # 9
-        ft.adipose.LDL,           # 10
-        ft.adipose.HDL,           # 11
-        ft.adipose.TG,            # 12
-        ft.circadian.cortisol,    # 13
+        ft.metabolic.G,               # 0
+        ft.cardio.SBP,                # 1
+        ft.cardio.DBP,                # 2
+        ft.cardio.HR,                 # 3
+        ft.cardio.HRV,                # 4
+        ft.renal.GFR,                 # 5
+        ft.renal.Na,                  # 6
+        ft.renal.K,                   # 7
+        ft.renal.Osm,                 # 8
+        ft.adipose.FFA,               # 9
+        ft.adipose.LDL,               # 10
+        ft.adipose.HDL,               # 11
+        ft.adipose.TG,                # 12
+        ft.circadian.cortisol,        # 13
         ft.circadian.sleep_pressure,  # 14
-        ft.metabolic.I,           # 15 (insulin — fasting / lab)
     ])
 
 
@@ -645,7 +643,7 @@ OBS_NAMES = [
     "glucose", "SBP", "DBP", "HR", "HRV",
     "GFR", "Na", "K", "Osm",
     "FFA", "LDL", "HDL", "TG",
-    "cortisol", "sleep_pressure", "insulin",
+    "cortisol", "sleep_pressure",
 ]
 
 

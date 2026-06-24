@@ -47,7 +47,7 @@ PARAM_DIM = (
 )  # = 25
 
 # ── Observation dimension ─────────────────────────────────────
-OBS_DIM = 16
+OBS_DIM = 15
 # indices: 0=G, 1=SBP, 2=DBP, 3=HR, 4=HRV, 5=GFR, 6=Na, 7=K, 8=Osm,
 #           9=FFA, 10=LDL, 11=HDL, 12=TG, 13=cortisol, 14=sleep_pressure
 

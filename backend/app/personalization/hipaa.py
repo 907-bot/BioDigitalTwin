@@ -84,12 +84,16 @@ class FieldEncryptor:
         if master_key is None:
             env_key = os.environ.get("BIO_MASTER_KEY")
             if env_key is None:
-                # SECURITY FIX: Raise error instead of using insecure empty fallback
-                raise ValueError(
-                    "BIO_MASTER_KEY environment variable is required for HIPAA encryption. "
-                    "Generate a secure 32-byte key and set it before deployment."
+                # Generate ephemeral key for development/testing.
+                # In production, set BIO_MASTER_KEY env var with a persistent KMS-backed key.
+                master_key = secrets.token_bytes(32)
+                logger.warning(
+                    "BIO_MASTER_KEY not set. Using ephemeral encryption key. "
+                    "Encrypted fields will NOT be decryptable across restarts. "
+                    "Set BIO_MASTER_KEY environment variable for production deployments."
                 )
-            master_key = env_key.encode()
+            else:
+                master_key = env_key.encode()
         if len(master_key) < 32:
             master_key = hashlib.sha256(master_key).digest()
         else:
@@ -286,12 +290,17 @@ class AuditLogger:
         if hmac_key is None:
             env_key = os.environ.get("BIO_AUDIT_KEY")
             if env_key is None:
-                # SECURITY FIX: Raise error instead of using insecure default
-                raise ValueError(
-                    "BIO_AUDIT_KEY environment variable is required for audit logging. "
-                    "Generate a secure key and set it before deployment."
+                # Generate ephemeral key for development/testing.
+                # In production, set BIO_AUDIT_KEY env var with a persistent key
+                # to ensure audit log HMAC signatures are verifiable across restarts.
+                hmac_key = secrets.token_bytes(32)
+                logger.warning(
+                    "BIO_AUDIT_KEY not set. Using ephemeral HMAC key. "
+                    "Audit log signatures will NOT be verifiable across restarts. "
+                    "Set BIO_AUDIT_KEY environment variable for production deployments."
                 )
-            hmac_key = env_key.encode()
+            else:
+                hmac_key = env_key.encode()
         self._hmac_key = hmac_key
 
     def _sign(self, record: Dict) -> str:

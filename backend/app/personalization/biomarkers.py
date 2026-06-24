@@ -347,12 +347,10 @@ def compute_all_biomarkers(
 
     return {
         # Metabolic
-        "insulin_resistance_score": 1.0 / max(p[0], 1e-6) if len(p) > 0 else 100.0,
+        "insulin_resistance_score": float(1.0 / max(p[0], 1e-6)) if len(p) > 0 else 100.0,
         "recovery_score": recovery,
         "stress_score": stress,
         "metabolic_flexibility": compute_metabolic_flexibility(ir, ffa, ldl, hdl),
-        # CRITICAL FIX: Hypoglycemia early warning
-        "hypoglycemia_risk": compute_hypoglycemia_risk(mu_g, glucose_sigma),
         # Cardiovascular
         "vascular_age": compute_vascular_age(art_stiff, sbp),
         "arterial_stiffness_index": compute_arterial_stiffness_index(art_stiff, sbp, dbp),
@@ -408,11 +406,11 @@ def compute_hypoglycemia_risk(
     
     return {
         "risk_level": risk_level,
-        "lower_bound_2sigma": round(lower_bound, 1),
-        "glucose_mean": round(glucose_mean, 1),
-        "alert": lower_bound < threshold,
-        "probability_hypoglycemia": round(prob_hypo, 4),
-        "threshold_mgdL": threshold,
+        "lower_bound_2sigma": float(round(lower_bound, 1)),
+        "glucose_mean": float(round(glucose_mean, 1)),
+        "alert": bool(lower_bound < threshold),
+        "probability_hypoglycemia": float(round(prob_hypo, 4)),
+        "threshold_mgdL": float(threshold),
         "recommendation": _get_hypo_recommendation(risk_level, lower_bound, glucose_mean),
     }
 

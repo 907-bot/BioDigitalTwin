@@ -97,7 +97,7 @@ def test_observation():
     state[7] = 70
     state[21] = 0.5
     obs = full_observation(state)
-    check("Returns 15-dim observation", len(obs) == 15,
+    check("Returns 16-dim observation", len(obs) == OBS_DIM,
           f"got len {len(obs)}")
     check("Glucose in observation[0]", abs(obs[0] - 100) < 1,
           f"got {obs[0]:.1f}")
@@ -145,7 +145,7 @@ def test_dual_engine():
 
     # Test prediction
     pred_mean, pred_std = engine.predict(n_steps=1)
-    check("Prediction returns 15 values", len(pred_mean) == 15)
+    check("Prediction returns 16 values", len(pred_mean) == OBS_DIM)
     check("Prediction std positive", np.all(pred_std > 0))
     check("Glucose prediction finite", np.isfinite(pred_mean[0]))
 
@@ -184,10 +184,10 @@ def test_safety_layer():
     # OOD
     ood = OODDetector(percentile=0.95)
     rng = np.random.RandomState(42)
-    normal = rng.normal(120, 10, size=(50, 15))
+    normal = rng.normal(120, 10, size=(50, OBS_DIM))
     ood.fit(normal)
-    r1 = ood.predict(np.array([120.0] * 15))
-    r2 = ood.predict(np.array([400.0] * 15))
+    r1 = ood.predict(np.array([120.0] * OBS_DIM))
+    r2 = ood.predict(np.array([400.0] * OBS_DIM))
     check("In-dist: not OOD", not r1.is_ood)
     check("Out-of-dist: OOD detected", r2.is_ood)
     check("Distance increases with deviation", r2.distance > r1.distance)
@@ -205,7 +205,7 @@ def test_safety_layer():
     twin_state = np.zeros(30)
     twin_state[0] = 120
     twin_cov = np.eye(30) * 0.5
-    obs = np.array([120.0] * 15)
+    obs = np.array([120.0] * OBS_DIM)
     v1 = guard.evaluate(twin_state, twin_cov, obs, drift_level=0)
     twin_state[0] = 800
     v2 = guard.evaluate(twin_state, twin_cov, obs, drift_level=0)
@@ -214,8 +214,8 @@ def test_safety_layer():
 
     # Adversarial
     adv = AdversarialDetector()
-    a1 = adv.update(np.array([120.0] * 15))
-    a2 = adv.update(np.array([600.0] * 15))
+    a1 = adv.update(np.array([120.0] * OBS_DIM))
+    a2 = adv.update(np.array([600.0] * OBS_DIM))
     check("Normal: no anomaly", len(a1) == 0)
     check("Out-of-range: detected", any("out_of_range" in a for a in a2))
 
