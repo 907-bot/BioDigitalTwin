@@ -1,7 +1,7 @@
 """
 Bio-Digital Twin  —  Phases 1-8 API
 """
-from fastapi import FastAPI, HTTPException, Query, BackgroundTasks, Body, Request
+from fastapi import FastAPI, HTTPException, Query, Path, BackgroundTasks, Body, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response, JSONResponse
@@ -325,7 +325,7 @@ def train_gnn_endpoint(background_tasks: BackgroundTasks, epochs: int = Query(10
     return {"status": "success", **result}
 
 @app.get("/phase2/similar-patients/{patient_id}")
-def similar_patients(patient_id: str = Query(..., description="Patient ID (format: P followed by 6 digits)"), k: int = Query(10, ge=1, le=50), source: str = Query("graph", pattern="^(graph|embedding)$")):
+def similar_patients(patient_id: str = Path(..., description="Patient ID (format: P followed by 6 digits)"), k: int = Query(10, ge=1, le=50), source: str = Query("graph", pattern="^(graph|embedding)$")):
     patient_id = validate_patient_id(patient_id)
     if source == "embedding":
         try:
@@ -349,7 +349,7 @@ def similar_patients(patient_id: str = Query(..., description="Patient ID (forma
     return {"patient_id": patient_id, "source": "graph_edges", "k": len(merged), "similar_patients": merged.drop(columns=["patient_id"]).to_dict(orient="records")}
 
 @app.get("/phase2/patient-subgraph/{patient_id}")
-def patient_subgraph(patient_id: str = Query(..., description="Patient ID (format: P followed by 6 digits)"), depth: int = Query(1, ge=1, le=2), max_nodes: int = Query(30, ge=5, le=100)):
+def patient_subgraph(patient_id: str = Path(..., description="Patient ID (format: P followed by 6 digits)"), depth: int = Query(1, ge=1, le=2), max_nodes: int = Query(30, ge=5, le=100)):
     patient_id = validate_patient_id(patient_id)
     edge_path = "data/patient_edges.csv"
     if not os.path.exists(edge_path):
@@ -390,7 +390,7 @@ def patient_subgraph(patient_id: str = Query(..., description="Patient ID (forma
     return {"center_patient": patient_id, "depth": depth, "nodes": nodes, "edges": unique_edges, "node_count": len(nodes), "edge_count": len(unique_edges)}
 
 @app.get("/phase2/embedding/{patient_id}")
-def get_patient_embedding(patient_id: str = Query(..., description="Patient ID (format: P followed by 6 digits)")):
+def get_patient_embedding(patient_id: str = Path(..., description="Patient ID (format: P followed by 6 digits)")):
     patient_id = validate_patient_id(patient_id)
     try:
         from .graph.trainer import get_embedding
@@ -580,7 +580,7 @@ def simulate(req: SimulateRequest):
 
 @app.get("/phase3/patients/{patient_id}/simulate")
 def simulate_patient(
-    patient_id: str = Query(..., description="Patient ID (format: P followed by 6 digits)"),
+    patient_id: str = Path(..., description="Patient ID (format: P followed by 6 digits)"),
     disease: str = Query("t2d"),
     horizon_days: int = Query(365, ge=1, le=1825),
     intervention_name: Optional[str] = Query(None),
