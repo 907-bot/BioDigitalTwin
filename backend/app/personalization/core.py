@@ -490,44 +490,54 @@ class PersonalizationEngine:
         process_noise_scale: float = 0.01,
         obs_noise_scale: float = 0.1,
         subgroup_priors: Optional[List] = None,
+        has_diabetes: bool = False,
+        mode: str = "dual",
     ):
-        state_dim = PHYSIO_DIM + PARAM_DIM
-        self.Q = np.eye(state_dim) * process_noise_scale
-        self.Q[PHYSIO_DIM:, PHYSIO_DIM:] *= 2.0
-        # State-specific process noise: states with faster dynamics get higher Q
-        self.Q[0, 0] *= 10.0   # G: fast glucose dynamics
-        self.Q[1, 1] *= 3.0    # I: fast insulin dynamics
-        self.Q[5, 5] *= 5.0    # SBP: moderate BP dynamics
-        self.Q[6, 6] *= 5.0    # DBP
-        self.Q[7, 7] *= 3.0    # HR
-        self.Q[9, 9] *= 3.0    # GFR
-        # Parameters: small Q to prevent drift; UKF covariance clamping prevents blow-up
-        self.Q[PHYSIO_DIM:, PHYSIO_DIM:] *= 0.5
-        # Observation noise: scaled by physiological plausibility
-        self.R = np.eye(OBS_DIM) * obs_noise_scale
-        # Slightly higher R for hard-to-observe signals
-        self.R[OBS_DIM - 3, OBS_DIM - 3] = obs_noise_scale * 5.0   # HRV
-        self.R[OBS_DIM - 2, OBS_DIM - 2] = obs_noise_scale * 5.0   # CRP
-        self.R[OBS_DIM - 1, OBS_DIM - 1] = obs_noise_scale * 5.0   # TG
-
-        from .dynamics import full_dynamics, full_observation
-
-        self._subgroup_priors = subgroup_priors
-        self.filter = UnscentedKalmanFilter(
-            state_dim=state_dim,
-            process_noise=self.Q,
-            obs_noise=self.R,
-            dynamics_fn=full_dynamics,
-            obs_fn=full_observation,
-            param_prior_fn=self._sample_param_prior,
-        )
-
+        self.mode = mode
+        self.has_diabetes = has_diabetes
         self._observation_buffer: List[float] = []
         self._full_obs_buffer: List[np.ndarray] = []
         self._control_buffer: List[dict] = []
-        self.drift_detector = DriftDetector()
+        self._update_count: int = 0
         self.is_initialized = False
-        self._update_count: int = 0  # warmup: skip drift for first few updates
+
+        if self.mode == "dual":
+            from .dual_engine import DualEstimationEngine
+            self.dual_engine = DualEstimationEngine(patient_has_diabetes=has_diabetes)
+            self.filter = self.dual_engine.filter
+            self.drift_detector = self.dual_engine.drift_detector
+        else:
+            state_dim = PHYSIO_DIM + PARAM_DIM
+            self.Q = np.eye(state_dim) * process_noise_scale
+            self.Q[PHYSIO_DIM:, PHYSIO_DIM:] *= 2.0
+            # State-specific process noise: states with faster dynamics get higher Q
+            self.Q[0, 0] *= 10.0   # G: fast glucose dynamics
+            self.Q[1, 1] *= 3.0    # I: fast insulin dynamics
+            self.Q[5, 5] *= 5.0    # SBP: moderate BP dynamics
+            self.Q[6, 6] *= 5.0    # DBP
+            self.Q[7, 7] *= 3.0    # HR
+            self.Q[9, 9] *= 3.0    # GFR
+            # Parameters: small Q to prevent drift; UKF covariance clamping prevents blow-up
+            self.Q[PHYSIO_DIM:, PHYSIO_DIM:] *= 0.5
+            # Observation noise: scaled by physiological plausibility
+            self.R = np.eye(OBS_DIM) * obs_noise_scale
+            # Slightly higher R for hard-to-observe signals
+            self.R[OBS_DIM - 3, OBS_DIM - 3] = obs_noise_scale * 5.0   # HRV
+            self.R[OBS_DIM - 2, OBS_DIM - 2] = obs_noise_scale * 5.0   # CRP
+            self.R[OBS_DIM - 1, OBS_DIM - 1] = obs_noise_scale * 5.0   # TG
+
+            from .dynamics import full_dynamics, full_observation
+
+            self._subgroup_priors = subgroup_priors
+            self.filter = UnscentedKalmanFilter(
+                state_dim=state_dim,
+                process_noise=self.Q,
+                obs_noise=self.R,
+                dynamics_fn=full_dynamics,
+                obs_fn=full_observation,
+                param_prior_fn=self._sample_param_prior,
+            )
+            self.drift_detector = DriftDetector()
 
     def _sample_param_prior(self) -> np.ndarray:
         if self._subgroup_priors is not None:
@@ -536,6 +546,10 @@ class PersonalizationEngine:
         return np.array([p.sample() for p in PRIORS])
 
     def initialize(self, initial_obs: np.ndarray) -> None:
+        if self.mode == "dual":
+            self.dual_engine.initialize(initial_obs)
+            self.is_initialized = True
+            return
         if len(initial_obs) > 0:
             mu = self.filter.get_state()
             mu[0] = float(initial_obs[0])  # G
@@ -572,8 +586,19 @@ class PersonalizationEngine:
             self._observation_buffer.append(float(observation[0]))
             self._full_obs_buffer.append(observation.copy())
             self._control_buffer.append(control_input)
-        self.filter.predict(control_input)
         self._update_count += 1
+
+        if self.mode == "dual":
+            if len(observation) < OBS_DIM:
+                padded = np.array([100.0, 120.0, 80.0, 72.0, 42.0,
+                                   90.0, 140.0, 4.2, 300.0, 0.5,
+                                   120.0, 50.0, 150.0, 10.0, 0.3])
+                padded[:len(observation)] = observation
+                observation = padded
+            self.dual_engine.update(observation, control_input)
+            return
+
+        self.filter.predict(control_input)
         # Skip drift checks during warmup (first 15 updates) so the UKF converges
         if (self._update_count > 15 and
                 len(observation) > 0 and
@@ -590,12 +615,22 @@ class PersonalizationEngine:
         self.filter.update(observation)
 
     def get_twin_state(self) -> np.ndarray:
+        if self.mode == "dual":
+            return self.dual_engine.get_state_estimate()[0]
         return self.filter.get_physio_state()
 
     def get_twin_state_covariance(self) -> np.ndarray:
+        if self.mode == "dual":
+            return self.dual_engine.get_state_estimate()[1]
         return self.filter.get_physio_covariance()
 
     def get_parameters(self) -> Tuple[np.ndarray, np.ndarray]:
+        if self.mode == "dual":
+            full_params = self.dual_engine._build_full_params()
+            cov = np.eye(PARAM_DIM) * 1e-4
+            for i, idx in enumerate(self.dual_engine.identifiable_indices):
+                cov[idx, idx] = self.dual_engine._param_std[i] ** 2
+            return full_params, cov
         return self.filter.get_parameters()
 
     def get_metabolic_state(self) -> np.ndarray:
@@ -655,6 +690,22 @@ class PersonalizationEngine:
             param_drift_rate: mean absolute parameter change per update step
             is_converged: whether parameter estimates have stabilized
         """
+        if self.mode == "dual":
+            mu = self.dual_engine._estimated_params
+            std = self.dual_engine._param_std
+            cv = std / (np.abs(mu) + 1e-8)
+            param_stability = float(np.mean(cv))
+            from .priors import PRIORS
+            prior_means = np.array([PRIORS[idx].mu if hasattr(PRIORS[idx], 'mu') else 1.0 for idx in self.dual_engine.identifiable_indices])
+            param_drift = float(np.mean(np.abs(mu - prior_means) / (np.abs(prior_means) + 1e-8)))
+            return {
+                "param_stability": param_stability,
+                "neff_ratio": 1.0,
+                "param_drift_rate": param_drift,
+                "n_updates": self._update_count,
+                "is_converged": self.dual_engine._is_converged,
+            }
+
         if len(self._control_buffer) < 10:
             return {
                 "param_stability": 1.0,
@@ -776,8 +827,9 @@ def create_personalization_engine(
     has_diabetes: bool = False,
     has_hypertension: bool = False,
     has_ckd: bool = False,
+    mode: str = "dual",
 ) -> PersonalizationEngine:
     """Factory with optional subgroup priors."""
     from .priors import get_subgroup_priors
     priors = get_subgroup_priors(age, sex, bmi, has_diabetes, has_hypertension, has_ckd)
-    return PersonalizationEngine(subgroup_priors=priors)
+    return PersonalizationEngine(subgroup_priors=priors, has_diabetes=has_diabetes, mode=mode)

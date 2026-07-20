@@ -4,8 +4,9 @@ Medical device software life cycle processes
 Compliance documentation for SaMD regulatory requirements
 """
 import json
-from datetime import datetime, date
+from datetime import datetime, date as dt_date
 from typing import Optional, Dict, Any, List
+from enum import Enum
 from pydantic import BaseModel, Field
 import logging
 
@@ -13,7 +14,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class SoftwareSafetyClass(str):
+class SoftwareSafetyClass(str, Enum):
     """IEC 62304 software safety classification"""
     A = "A"  # No injury or damage to health is possible
     B = "B"  # Non-serious injury is possible
@@ -36,7 +37,7 @@ class IEC62304Documentation(BaseModel):
     document_id: str = "IEC-62304-001"
     document_title: str = "Medical Device Software Life Cycle Processes"
     version: str = "1.0"
-    date: date = Field(default_factory=date.today)
+    date: dt_date = Field(default_factory=dt_date.today)
     
     # Software classification
     safety_class: SoftwareSafetyClass = SoftwareSafetyClass.C  # Class C for insulin dosing
@@ -270,11 +271,11 @@ class IEC62304DocumentationManager:
         test_id: str,
         test_name: str,
         result: str,
-        date: date = None
+        date: dt_date = None
     ) -> Dict[str, Any]:
         """Record test result"""
         if date is None:
-            date = date.today()
+            date = dt_date.today()
         
         test_result = {
             "test_id": test_id,

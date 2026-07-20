@@ -3,7 +3,7 @@ IRB Protocol for Clinical Study BDT-001
 Institutional Review Board protocol documentation
 """
 import json
-from datetime import datetime, date
+from datetime import datetime, date as dt_date
 from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, Field
 import logging
@@ -17,7 +17,7 @@ class IRBProtocol(BaseModel):
     protocol_id: str = "BDT-001-IRB-001"
     protocol_title: str = "Bio-Digital Twin for Type 1 Diabetes Management: A Randomized Crossover Trial"
     version: str = "1.0"
-    date: date = Field(default_factory=date.today)
+    date: dt_date = Field(default_factory=dt_date.today)
     
     # Study information
     study_id: str = "BDT-001"
@@ -153,11 +153,11 @@ class IRBProtocolManager:
         amendment_number: str,
         description: str,
         reason: str,
-        date: date = None
+        date: dt_date = None
     ) -> Dict[str, Any]:
         """Add protocol amendment"""
         if date is None:
-            date = date.today()
+            date = dt_date.today()
         
         amendment = {
             "amendment_number": amendment_number,

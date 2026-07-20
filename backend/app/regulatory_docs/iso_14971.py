@@ -3,7 +3,7 @@ ISO 14971 Risk Management
 Medical device risk management process documentation
 """
 import json
-from datetime import datetime, date
+from datetime import datetime, date as dt_date
 from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, Field
 from enum import Enum
@@ -11,6 +11,7 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 
 class SeverityLevel(str, Enum):
@@ -59,7 +60,7 @@ class ISO14971RiskManagement(BaseModel):
     document_id: str = "ISO-14971-001"
     document_title: str = "Medical Device Risk Management"
     version: str = "1.0"
-    date: date = Field(default_factory=date.today)
+    date: dt_date = Field(default_factory=dt_date.today)
     
     # Risk management process
     risk_analysis_complete: bool = True
@@ -350,12 +351,12 @@ class ISO14971RiskManagementManager:
         event_type: str,
         description: str,
         severity: str,
-        date: date = None,
+        date: dt_date = None,
         corrective_action: Optional[str] = None
     ) -> Dict[str, Any]:
         """Record post-production safety event"""
         if date is None:
-            date = date.today()
+            date = dt_date.today()
         
         event = {
             "event_id": event_id,

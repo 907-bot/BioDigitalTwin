@@ -27,6 +27,7 @@ from .priors import PRIORS, PARAMETER_NAMES, PARAMETER_RANGES, LogNormalPrior
 from .dynamics import full_dynamics, full_observation
 from .physio_ukf import PhysioOnlyUKF
 from .core import NormalPrior, TruncatedNormalPrior
+from .drift import DriftDetector
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +108,7 @@ class DualEstimationEngine:
         self._pred_error_buffer: List[float] = []
         self._error_buffer_maxlen: int = 30
         self._last_pred_mean: Optional[np.ndarray] = None
+        self.drift_detector = DriftDetector()
 
     def _prior_mean_params(self) -> np.ndarray:
         means = []
@@ -260,7 +262,9 @@ class DualEstimationEngine:
         if len(obs) > 14:
             mu[19] = float(obs[14])                   # sleep_pressure
 
-    def update(self, observation: np.ndarray) -> None:
+    def update(self, observation: np.ndarray, control_input: Optional[dict] = None) -> None:
+        if control_input is None:
+            control_input = {}
         # Track prediction error for empirical uncertainty calibration
         if self._last_pred_mean is not None and len(observation) > 0:
             err = float(observation[0] - self._last_pred_mean[0])
@@ -268,7 +272,15 @@ class DualEstimationEngine:
             if len(self._pred_error_buffer) > self._error_buffer_maxlen:
                 self._pred_error_buffer = self._pred_error_buffer[-self._error_buffer_maxlen:]
 
-        self.filter.predict({})
+        # Run drift check if not warming up
+        if (self._step_count > 15 and
+                len(observation) > 0 and
+                self.drift_detector.can_run_counterfactuals):
+            pred_mean, pred_std = self.filter.get_predicted_obs_stats()
+            pred_unc = pred_std * 1.645
+            self.drift_detector.check(float(observation[0]), pred_mean, pred_unc)
+
+        self.filter.predict(control_input)
         self.filter.update(observation)
         self._last_obs = observation.copy()
         self._obs_buffer.append(observation.copy())
