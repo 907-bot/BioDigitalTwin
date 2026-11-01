@@ -64,8 +64,8 @@ class LocalExposureCalculator:
         # In rapidly perfused organs, interstitial free concentration equals plasma free concentration.
         interstitial_free_nM = plasma_free_nM
 
-        # 4. Intracellular free concentration
-        intracellular_free_nM = interstitial_free_nM * float(max(0.05, intracellular_permeability_ratio))
+        # 4. Intracellular free concentration (incorporates tissue partition Kp for active transport / cellular accumulation)
+        intracellular_free_nM = interstitial_free_nM * float(max(0.05, intracellular_permeability_ratio)) * kp
 
         # 5. Determine target accessible concentration based on subcellular location
         if subcellular_location in [

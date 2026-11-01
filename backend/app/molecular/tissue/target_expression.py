@@ -6,12 +6,6 @@ from __future__ import annotations
 
 from typing import Dict, Any, Optional, List
 from app.molecular.tissue.cell_types import OrganType, CellTypeSpec, CELL_TYPES_ATLAS
-from app.molecular.targets.target_registry import (
-    MolecularTarget,
-    SpatialTargetExpression,
-    ExpressionStatus,
-    get_target_registry,
-)
 
 
 class SpatialExpressionResolver:
@@ -20,6 +14,7 @@ class SpatialExpressionResolver:
     """
     @staticmethod
     def get_expression_summary(target_id: str) -> Dict[str, Any]:
+        from app.molecular.targets.target_registry import get_target_registry
         registry = get_target_registry()
         target = registry.get(target_id)
         if not target:

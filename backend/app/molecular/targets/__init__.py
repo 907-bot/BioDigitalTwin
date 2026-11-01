@@ -44,3 +44,4 @@ __all__ = [
     "get_target_registry",
     "initialize_target_registry",
 ]
+

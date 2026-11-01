@@ -30,3 +30,4 @@ PATHWAY_TOPOLOGY: Dict[str, Dict[str, Any]] = {
         "cross_talk": ["Inhibits FoxO1 nuclear translocation (shutting down PEPCK)", "Promotes eNOS phosphorylation (endothelial NO release)"],
     },
 }
+

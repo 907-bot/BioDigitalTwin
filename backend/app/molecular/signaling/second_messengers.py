@@ -95,3 +95,4 @@ class SecondMessengerTransducer:
             Akt_phosphorylation_fraction=round(akt, 4),
             MLCK_activity_fraction=round(mlck, 4),
         )
+

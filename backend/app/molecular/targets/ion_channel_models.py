@@ -81,3 +81,4 @@ def build_cacna1c_target() -> MolecularTarget:
 def register_all_ion_channels() -> None:
     registry = get_target_registry()
     registry.register(build_cacna1c_target())
+

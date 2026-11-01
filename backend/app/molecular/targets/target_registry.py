@@ -227,3 +227,4 @@ class MolecularTargetRegistry:
 
 def get_target_registry() -> MolecularTargetRegistry:
     return MolecularTargetRegistry.get_instance()
+

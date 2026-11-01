@@ -214,3 +214,4 @@ def get_anatomical_hierarchy() -> Dict[str, Any]:
             "markers": spec.markers,
         })
     return hierarchy
+

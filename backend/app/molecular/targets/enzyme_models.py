@@ -116,3 +116,4 @@ def register_all_enzymes() -> None:
     registry = get_target_registry()
     registry.register(build_hmgcr_target())
     registry.register(build_ace_target())
+

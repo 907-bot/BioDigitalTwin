@@ -38,7 +38,10 @@ class TargetEngagementEvaluator:
         competing_endogenous_conc_nM: float = 0.0,
     ) -> TargetEngagementResult:
         total_density = target.get_effective_density_pmol_g(cell_type_id)
-        kd = target.binding_params.Kd_nM
+        if target.target_class in [TargetClass.ENZYME, TargetClass.TRANSPORTER, TargetClass.ION_CHANNEL] and not is_agonist:
+            kd = target.functional_params.IC50_nM or target.binding_params.Kd_nM
+        else:
+            kd = target.binding_params.Kd_nM
         hill = target.binding_params.hill_coefficient
         residence = target.binding_params.residence_time_min
 

@@ -58,3 +58,4 @@ def cheng_prusoff_ki(
     s = max(0.0, float(substrate_conc_nM))
     km = max(1e-12, float(Km_nM))
     return float(ic50 / (1.0 + (s / km)))
+

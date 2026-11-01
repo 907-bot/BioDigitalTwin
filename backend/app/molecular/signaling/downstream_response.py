@@ -137,3 +137,4 @@ class CellularResponseEvaluator:
             description=f"Molecular engagement at {target_id} induces {engagement.modulation_type} ({mod_pct:.1f}%).",
             affected_cellular_pathways=["Target-coupled downstream effector network"],
         )
+

@@ -29,3 +29,4 @@ def hill_equation_response(
     ec_g = ec50 ** g
     resp = E0 + (Emax - E0) * (c_g / (ec_g + c_g))
     return float(resp)
+

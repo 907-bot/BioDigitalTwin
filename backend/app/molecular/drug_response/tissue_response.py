@@ -120,3 +120,4 @@ class TissueResponseIntegrator:
             unit="relative_index",
             clinical_interpretation=f"Tissue activity modulated to {fold:.2f}x of normal resting level.",
         )
+

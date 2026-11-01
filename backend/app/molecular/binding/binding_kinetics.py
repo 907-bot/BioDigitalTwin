@@ -126,3 +126,4 @@ class DynamicBindingEngine:
             "agonist_occupancy": ar_sol / max(1e-6, self.R_total),
             "antagonist_occupancy": br_sol / max(1e-6, self.R_total),
         }
+

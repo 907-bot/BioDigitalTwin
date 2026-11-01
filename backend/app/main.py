@@ -1004,6 +1004,12 @@ from app.physiology.router_v2 import router as physiology_v2_router  # noqa: E40
 app.include_router(physiology_router)
 app.include_router(physiology_v2_router)
 
+# =============================================================================
+# Spatial Pharmacology & Molecular Target Engagement Engine
+# =============================================================================
+from app.molecular.router import router as molecular_router  # noqa: E402
+app.include_router(molecular_router)
+
 
 # =============================================================================
 # Alias Endpoints — resolve 404s for un-prefixed routes

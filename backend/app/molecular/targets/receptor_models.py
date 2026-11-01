@@ -449,3 +449,4 @@ def register_all_receptors() -> None:
     registry.register(build_insr_target())
     registry.register(build_nr3c1_target())
     registry.register(build_chrna1_target())
+

@@ -67,7 +67,7 @@ class OrganResponseEvaluator:
                 "plasma_volume_contraction_L": 0.25,
                 "long_term_nephroprotection": "confirmed_via_reduced_intraglomerular_hypertension",
             }
-            if current_plasma_glucose_mg_dL < 140.0:
+            if current_plasma_glucose_mg_dL < 250.0:
                 adverse_effects.append({
                     "adverse_effect": "Euglycemic Diabetic Ketoacidosis (euDKA) Risk",
                     "mechanism": "Carbohydrate deficit and glucosuria shift metabolism to lipolysis and ketogenesis with normal blood glucose.",

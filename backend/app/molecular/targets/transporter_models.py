@@ -127,3 +127,4 @@ def register_all_transporters() -> None:
     registry = get_target_registry()
     registry.register(build_sglt2_target())
     registry.register(build_glut4_target())
+
