@@ -1,18 +1,13 @@
 """
 Phase 6: Dual estimation engine — UKF for state, MAP for parameters.
 
-Architectural fix for the over-parameterized UKF (55-dim state, 15-dim obs).
-- 30-dim state (well-determined by 15-dim obs in short windows)
-- ~7 identifiable parameters (those with direct effect on observables)
-- 18 parameters anchored to population priors
-- MAP estimation in log-space for identifiability and positivity
-
-This is the key fix for personalization RMSE > 100 mg/dL → < 25 mg/dL.
-
-References:
-- Nelson & Stear (1976) — simultaneous state and parameter estimation
-- Ljung (1979) — asymptotic Cramér-Rao bound
-- Schön et al. (2011) — system identification with UKF
+Structured dual estimation addressing parameter identifiability:
+- 36-dim state across 8 subsystems (Metabolic, Cardio, Renal, Inflammation,
+  Circadian, Adipose, Immune, Musculoskeletal) tracked via PhysioOnlyUKF.
+- 7 identifiable parameters (SI, HGP_basal, beta_response, RT, baroreflex_gain,
+  baseline_GFR, circadian_amplitude) personalized via MAP optimization in log-space.
+- 22 parameters anchored to informative population priors (total 29 physiological parameters).
+- MAP estimation in log-space ensures positivity and numerical stability.
 """
 
 import math
@@ -120,72 +115,84 @@ class DualEstimationEngine:
         return np.array(means)
 
     def _prior_mean_state(self) -> np.ndarray:
-        """Population-mean state for unobserved dims during MAP."""
+        """Population-mean state for unobserved dims during MAP (36 dimensions)."""
         if self.patient_has_diabetes:
             return np.array([
-                160.0,   # glucose
-                12.0,    # insulin
-                4.0,     # HGP
-                4.0,     # PGU
-                1.0,     # IR
-                120.0,   # SBP
-                80.0,    # DBP
-                70.0,    # HR
-                45.0,    # HRV
-                100.0,   # GFR
-                140.0,   # Na
-                4.2,     # K
-                290.0,   # Osm
-                1.0,     # CRP
-                1.2,     # CLOCK_BMAL1
-                0.8,     # PER_CRY
-                350.0,   # cortisol
-                10.0,    # melatonin
-                0.0,     # circadian_phase
-                0.3,     # sleep_pressure
-                20.0,    # fat_mass
-                0.5,     # FFA
-                120.0,   # LDL
-                50.0,    # HDL
-                120.0,   # TG
-                0.0,     # CRP_elevated
-                0.0,     # endothelial Dysfunction
-                0.0,     # oxidative_stress
-                0.0,     # nf_kb
-                0.0,     # tnf_alpha
+                160.0,   # glucose (0)
+                12.0,    # insulin (1)
+                4.0,     # HGP (2)
+                4.0,     # PGU (3)
+                1.0,     # IR (4)
+                120.0,   # SBP (5)
+                80.0,    # DBP (6)
+                70.0,    # HR (7)
+                45.0,    # HRV (8)
+                100.0,   # GFR (9)
+                140.0,   # Na (10)
+                4.2,     # K (11)
+                290.0,   # Osm (12)
+                1.5,     # CRP (13)
+                1.2,     # CLOCK_BMAL1 (14)
+                0.8,     # PER_CRY (15)
+                350.0,   # cortisol (16)
+                10.0,    # melatonin (17)
+                0.0,     # circadian_phase (18)
+                0.3,     # sleep_pressure (19)
+                25.0,    # fat_mass (20)
+                0.6,     # FFA (21)
+                130.0,   # LDL (22)
+                45.0,    # HDL (23)
+                150.0,   # TG (24)
+                1.5,     # IL6_proxy (25)
+                1.2,     # TNFa_proxy (26)
+                1.1,     # M1_M2_ratio (27)
+                0.4,     # NFkB_activity (28)
+                25.0,    # InflammatoryLoad (29)
+                28.0,    # muscle_mass (30)
+                45.0,    # muscle_strength_index (31)
+                0.15,    # hypertrophy_signal (32)
+                1.10,    # bone_mineral_density (33)
+                0.9,     # osteoblast_activity (34)
+                1.1,     # osteoclast_activity (35)
             ])
         else:
             return np.array([
-                100.0,   # glucose
-                5.0,     # insulin
-                2.0,     # HGP
-                4.0,     # PGU
-                1.0,     # IR
-                120.0,   # SBP
-                80.0,    # DBP
-                70.0,    # HR
-                45.0,    # HRV
-                100.0,   # GFR
-                140.0,   # Na
-                4.2,     # K
-                290.0,   # Osm
-                1.0,     # CRP
-                1.2,     # CLOCK_BMAL1
-                0.8,     # PER_CRY
-                350.0,   # cortisol
-                10.0,    # melatonin
-                0.0,     # circadian_phase
-                0.3,     # sleep_pressure
-                20.0,    # fat_mass
-                0.5,     # FFA
-                120.0,   # LDL
-                50.0,    # HDL
-                120.0,   # TG
-                0.0,     # CRP_elevated
-                0.0,     # endothelial Dysfunction
-                0.0,     # oxidative_stress
-                0.0,     # nf_kb
-                0.0,     # tnf_alpha
+                100.0,   # glucose (0)
+                5.0,     # insulin (1)
+                2.0,     # HGP (2)
+                4.0,     # PGU (3)
+                1.0,     # IR (4)
+                120.0,   # SBP (5)
+                80.0,    # DBP (6)
+                70.0,    # HR (7)
+                45.0,    # HRV (8)
+                100.0,   # GFR (9)
+                140.0,   # Na (10)
+                4.2,     # K (11)
+                290.0,   # Osm (12)
+                1.0,     # CRP (13)
+                1.2,     # CLOCK_BMAL1 (14)
+                0.8,     # PER_CRY (15)
+                350.0,   # cortisol (16)
+                10.0,    # melatonin (17)
+                0.0,     # circadian_phase (18)
+                0.3,     # sleep_pressure (19)
+                20.0,    # fat_mass (20)
+                0.5,     # FFA (21)
+                120.0,   # LDL (22)
+                50.0,    # HDL (23)
+                120.0,   # TG (24)
+                1.0,     # IL6_proxy (25)
+                0.5,     # TNFa_proxy (26)
+                0.5,     # M1_M2_ratio (27)
+                0.2,     # NFkB_activity (28)
+                15.0,    # InflammatoryLoad (29)
+                30.0,    # muscle_mass (30)
+                50.0,    # muscle_strength_index (31)
+                0.2,     # hypertrophy_signal (32)
+                1.15,    # bone_mineral_density (33)
+                1.0,     # osteoblast_activity (34)
+                1.0,     # osteoclast_activity (35)
             ])
 
     def _build_full_params(self) -> np.ndarray:

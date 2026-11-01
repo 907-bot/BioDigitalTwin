@@ -25,6 +25,18 @@ class UncertaintyReport:
     coverage_metrics: Dict
 
 
+def _decoupled_alternate_dynamics(state: np.ndarray, params: np.ndarray, inputs: dict) -> np.ndarray:
+    """Alternate model structure: decoupled metabolic-cardio-renal ODE without inter-organ feedback."""
+    from .dynamics import compute_metabolic_dynamics, compute_cardio_dynamics, compute_renal_dynamics, _params_to_dict
+    from .state import Phase3TwinState
+    tw = Phase3TwinState.from_array(state)
+    p = _params_to_dict(params)
+    m = compute_metabolic_dynamics(tw.metabolic, inputs, p, circ_cortisol=300.0)
+    c = compute_cardio_dynamics(tw.cardio, inputs, p, meta_ir=1.0, circ_cortisol=300.0)
+    r = compute_renal_dynamics(tw.renal, inputs, p, c, m.G)
+    return Phase3TwinState(m, c, r, tw.inflammation, tw.circadian, tw.adipose, tw.immune, tw.musculoskeletal).to_array()
+
+
 class UncertaintyEngine:
     """
     Quantifies and communicates all sources of uncertainty.
@@ -174,9 +186,11 @@ class UncertaintyEngine:
             n_forecast = min(horizon, len(observed_trajectory))
             covered = 0
             total = 0
+            n_vars = min(observed_trajectory.shape[1] if observed_trajectory.ndim > 1 else 1, PHYSIO_DIM)
             for t in range(n_forecast):
-                for v in range(PHYSIO_DIM):
-                    if lower[t, v] <= observed_trajectory[t, v] <= upper[t, v]:
+                for v in range(n_vars):
+                    obs_val = observed_trajectory[t, v] if observed_trajectory.ndim > 1 else observed_trajectory[t]
+                    if lower[t, v] <= obs_val <= upper[t, v]:
                         covered += 1
                     total += 1
             empirical = covered / max(total, 1)
@@ -199,9 +213,11 @@ class UncertaintyEngine:
         pp_samples = self.posterior_predictive_samples(n_pp_samples, horizon)
         meas_unc = self.measurement_uncertainty()
         interv_unc = self.intervention_adherence_uncertainty()
+        struct_unc = self.structural_uncertainty([_decoupled_alternate_dynamics])
 
         coverage_metrics = {
             "90p_ci_halfwidth": float(np.mean(param_unc)),
+            "structural_uncertainty_cv_pct": float(struct_unc),
             "measurement_noise_avg": float(np.mean(meas_unc)),
             "intervention_cv_pct": float(interv_unc),
         }
@@ -212,7 +228,7 @@ class UncertaintyEngine:
 
         return UncertaintyReport(
             parameter_uncertainty=param_unc,
-            structural_uncertainty=0.0,
+            structural_uncertainty=float(struct_unc),
             measurement_uncertainty=meas_unc,
             intervention_uncertainty=interv_unc,
             posterior_predictive_samples=pp_samples,

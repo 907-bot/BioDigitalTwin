@@ -25,6 +25,12 @@ try:
     HAS_PYG = True
 except ImportError:
     HAS_PYG = False
+    Data = Any
+    Batch = Any
+    GCNConv = Any
+    GATConv = Any
+    SAGEConv = Any
+    global_mean_pool = Any
 
 try:
     from rdkit import Chem

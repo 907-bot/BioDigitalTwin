@@ -19,6 +19,7 @@ from datetime import datetime
 from enum import Enum
 import warnings
 from app.personalization.dynamics import DEFAULT_PARAMS
+from app.personalization.state import PHYSIO_DIM
 
 
 # ── Trial Design ──────────────────────────────────────────────
@@ -224,32 +225,66 @@ class ClinicalTrialSimulator:
           - T1DM-like: insulin deficient, glucose 150-250
           - T2DM-like: insulin resistant, glucose 130-200
         """
-        from app.personalization.state import _META_OFF
+        from app.personalization.state import (
+            PHYSIO_DIM,
+            _META_OFF, _CARDIO_OFF, _RENAL_OFF, _INFL_OFF,
+            _CIRC_OFF, _ADIP_OFF, _IMMUNE_OFF, _MUSC_OFF,
+        )
 
-        physio = np.zeros(30)
+        physio = np.zeros(PHYSIO_DIM)
 
-        # Default: slightly elevated glucose
+        # 1. Metabolic
         baseline_g = self.rng.uniform(120, 180)
-        physio[_META_OFF] = baseline_g
-        physio[_META_OFF + 1] = 0.013 * max(0.0, baseline_g - 80)  # insulin
+        physio[_META_OFF + 0] = baseline_g  # G
+        physio[_META_OFF + 1] = 0.013 * max(0.0, baseline_g - 80)  # I
         physio[_META_OFF + 2] = 2.0   # HGP
         physio[_META_OFF + 3] = 1.0   # PGU
         physio[_META_OFF + 4] = 0.5   # IR
-        physio[5] = self.rng.uniform(110, 140)  # SBP
-        physio[6] = self.rng.uniform(70, 90)    # DBP
-        physio[7] = self.rng.uniform(65, 80)    # HR
-        physio[8] = self.rng.uniform(20, 40)    # HRV
-        physio[9] = self.rng.uniform(80, 120)   # GFR
-        physio[10] = self.rng.uniform(135, 145)  # Na
-        physio[11] = self.rng.uniform(4.0, 5.0)  # K
-        physio[12] = self.rng.uniform(285, 300)  # Osm
-        physio[13] = self.rng.uniform(1.0, 3.0)  # FFA
-        physio[14] = self.rng.uniform(80, 130)   # LDL
-        physio[15] = self.rng.uniform(40, 60)    # HDL
-        physio[16] = self.rng.uniform(100, 200)  # TG
-        physio[17] = self.rng.uniform(5, 15)     # cortisol
-        physio[18] = self.rng.uniform(0.2, 0.5)  # sleep_pressure
-        physio[21] = self.rng.uniform(0.3, 0.7)  # immune
+
+        # 2. Cardiovascular
+        physio[_CARDIO_OFF + 0] = self.rng.uniform(110, 140)  # SBP
+        physio[_CARDIO_OFF + 1] = self.rng.uniform(70, 90)    # DBP
+        physio[_CARDIO_OFF + 2] = self.rng.uniform(65, 80)    # HR
+        physio[_CARDIO_OFF + 3] = self.rng.uniform(20, 40)    # HRV
+
+        # 3. Renal
+        physio[_RENAL_OFF + 0] = self.rng.uniform(80, 120)   # GFR
+        physio[_RENAL_OFF + 1] = self.rng.uniform(135, 145)  # Na
+        physio[_RENAL_OFF + 2] = self.rng.uniform(4.0, 5.0)  # K
+        physio[_RENAL_OFF + 3] = self.rng.uniform(285, 300)  # Osm
+
+        # 4. Inflammation (legacy)
+        physio[_INFL_OFF + 0] = self.rng.uniform(0.5, 3.0)   # CRP (mg/L)
+
+        # 5. Circadian
+        physio[_CIRC_OFF + 0] = 1.0  # CLOCK_BMAL1
+        physio[_CIRC_OFF + 1] = 1.0  # PER_CRY
+        physio[_CIRC_OFF + 2] = self.rng.uniform(150, 400)   # cortisol (nmol/L)
+        physio[_CIRC_OFF + 3] = self.rng.uniform(10, 80)     # melatonin (pmol/L)
+        physio[_CIRC_OFF + 4] = self.rng.uniform(0.0, 6.28)  # circadian_phase
+        physio[_CIRC_OFF + 5] = self.rng.uniform(0.2, 0.6)   # sleep_pressure
+
+        # 6. Adipose-Lipid
+        physio[_ADIP_OFF + 0] = self.rng.uniform(15.0, 30.0) # fat_mass (kg)
+        physio[_ADIP_OFF + 1] = self.rng.uniform(0.3, 0.9)   # FFA (mmol/L)
+        physio[_ADIP_OFF + 2] = self.rng.uniform(80, 130)    # LDL (mg/dL)
+        physio[_ADIP_OFF + 3] = self.rng.uniform(40, 60)     # HDL (mg/dL)
+        physio[_ADIP_OFF + 4] = self.rng.uniform(100, 200)   # TG (mg/dL)
+
+        # 7. Immune-Inflammatory
+        physio[_IMMUNE_OFF + 0] = self.rng.uniform(0.5, 2.5) # IL6_proxy
+        physio[_IMMUNE_OFF + 1] = self.rng.uniform(0.5, 2.0) # TNFa_proxy
+        physio[_IMMUNE_OFF + 2] = self.rng.uniform(0.4, 0.8) # M1_M2_ratio
+        physio[_IMMUNE_OFF + 3] = self.rng.uniform(0.1, 0.3) # NFkB_activity
+        physio[_IMMUNE_OFF + 4] = self.rng.uniform(5.0, 20.0)# InflammatoryLoad
+
+        # 8. Musculoskeletal
+        physio[_MUSC_OFF + 0] = self.rng.uniform(25.0, 40.0) # muscle_mass (kg)
+        physio[_MUSC_OFF + 1] = self.rng.uniform(40.0, 80.0) # muscle_strength_index
+        physio[_MUSC_OFF + 2] = 0.1                          # hypertrophy_signal
+        physio[_MUSC_OFF + 3] = self.rng.uniform(1.0, 1.4)   # bone_mineral_density
+        physio[_MUSC_OFF + 4] = 1.0                          # osteoblast_activity
+        physio[_MUSC_OFF + 5] = 1.0                          # osteoclast_activity
 
         params = DEFAULT_PARAMS.copy()
         # Create variation
@@ -269,18 +304,19 @@ class ClinicalTrialSimulator:
         - Exercise at 8:00 if applicable
         """
         from app.personalization.dynamics import full_dynamics
-        dt = 1.0  # minute steps
+        dt = 5.0  # 5-minute steps for fast, stable clinical trial simulation
         steps = int(duration_days * 1440.0 / dt)
+        step_day = max(1, int(1440.0 / dt))
 
         # Extract patient state
         if hasattr(patient, 'organ_physio'):
             physio = patient.organ_physio.copy()
             params = patient.organ_params.copy()
         elif isinstance(patient, dict):
-            physio = patient.get('physio', np.zeros(30)).copy()
+            physio = patient.get('physio', np.zeros(PHYSIO_DIM)).copy()
             params = patient.get('params', DEFAULT_PARAMS.copy()).copy()
         else:
-            physio = np.zeros(30)
+            physio = np.zeros(PHYSIO_DIM)
             params = DEFAULT_PARAMS.copy()
 
         # Apply parameter modifiers
@@ -300,45 +336,47 @@ class ClinicalTrialSimulator:
         daily_glucose_count = 0
         day = 0
 
-        for step in range(min(steps, 50000)):
+        # Cap steps at 15 days (4320 steps at dt=5) for efficient trial trajectory evaluation
+        max_sim_steps = min(steps, 4320)
+        for step in range(max_sim_steps):
             # ── Scheduled inputs at specific times of day ──────
-            minute_of_day = step % 1440
+            minute_of_day = int(step * dt) % 1440
             inputs = {}
 
             # Breakfast at 7:00 (minute 420)
-            if minute_of_day == 420:
+            if 420 <= minute_of_day < 420 + dt:
                 inputs["carbs_grams"] = arm.daily_inputs.get("carbs_grams", 50.0)
                 inputs["meal_glucose"] = inputs["carbs_grams"] * 0.5
 
             # Insulin at meals (if applicable)
-            if minute_of_day in (420, 720, 1080):  # 7:00, 12:00, 18:00
+            if any(t <= minute_of_day < t + dt for t in (420, 720, 1080)):
                 insulin_dose = arm.daily_inputs.get("insulin_dose", 0.0)
                 if insulin_dose > 0:
                     inputs["insulin_dose"] = insulin_dose
 
             # Lunch at 12:00 (minute 720)
-            if minute_of_day == 720:
+            if 720 <= minute_of_day < 720 + dt:
                 inputs["carbs_grams"] = inputs.get("carbs_grams", 60.0)
                 inputs["meal_glucose"] = inputs["carbs_grams"] * 0.5
 
             # Dinner at 18:00 (minute 1080)
-            if minute_of_day == 1080:
+            if 1080 <= minute_of_day < 1080 + dt:
                 inputs["carbs_grams"] = inputs.get("carbs_grams", 55.0)
                 inputs["meal_glucose"] = inputs["carbs_grams"] * 0.5
 
             # Exercise at 8:00 (minute 480) — daily
-            if minute_of_day == 480:
+            if 480 <= minute_of_day < 480 + dt:
                 exercise = arm.daily_inputs.get("exercise", 0.0)
                 if exercise > 0:
                     inputs["exercise"] = exercise
 
             # Calorie intake — use daily total at lunch
-            if minute_of_day == 720:
+            if 720 <= minute_of_day < 720 + dt:
                 cal = arm.daily_inputs.get("calorie_intake", 2000.0)
                 inputs["calorie_intake"] = cal
 
             # Sleep signal at 23:00
-            if minute_of_day == 1380:
+            if 1380 <= minute_of_day < 1380 + dt:
                 inputs["sleep_hours"] = arm.daily_inputs.get("sleep_hours", 8.0)
 
             # ── Adherence: skip inputs with probability (1-adherence) ──
@@ -360,7 +398,7 @@ class ClinicalTrialSimulator:
             # ── Record daily ──
             daily_glucose_sum += physio[0]
             daily_glucose_count += 1
-            if step > 0 and step % 1440 == 0:
+            if step > 0 and step % step_day == 0:
                 day += 1
                 avg_g = daily_glucose_sum / max(daily_glucose_count, 1)
                 trajectory["glucose"].append(float(avg_g))

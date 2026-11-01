@@ -253,6 +253,14 @@ class MultiScaleTwinEngine:
         behaviors: Optional[BehavioralState] = None,
     ) -> None:
         self._patient_id = patient_id
+        # Pad legacy 30-dim physio or 25-dim params to authoritative dimensions
+        if len(organ_physio) < PHYSIO_DIM:
+            msk_pad = np.array([30.0, 50.0, 0.2, 1.15, 1.0, 1.0])[: PHYSIO_DIM - len(organ_physio)]
+            organ_physio = np.concatenate([organ_physio, msk_pad])
+        if len(organ_params) < PARAM_DIM:
+            from app.personalization.dynamics import DEFAULT_PARAMS
+            organ_params = np.concatenate([organ_params, DEFAULT_PARAMS[len(organ_params) : PARAM_DIM]])
+
         self.state = MultiScaleState(
             molecular=molecular,
             cellular=cellular,

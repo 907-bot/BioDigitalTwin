@@ -46,8 +46,8 @@ class TestPriors:
             TruncatedNormalPrior(mu=180, sigma=15, low=200, high=100)
 
     def test_priors_list(self):
-        assert len(PRIORS) == 25
-        assert len(PARAMETER_NAMES) == 25
+        assert len(PRIORS) == PARAM_DIM
+        assert len(PARAMETER_NAMES) == PARAM_DIM
         assert PARAMETER_NAMES[0] == "SI"
 
     def test_validate_parameter(self):

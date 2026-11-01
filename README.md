@@ -54,6 +54,7 @@ The Bio‑Digital Twin project is a **modular, phase‑based platform** that wal
 |14 | Wet‑lab molecule triage | `/phase14` (wetlab) |
 |15 | Disease Registry (Postgres CRUD) | `/phase15` (registry) |
 |16 | Explainable AI (XAI) | `/phase16` (xai) |
+|17 | Multi-Organ World Model (Lungs, Liver, GI, ANS) | `/physiology` (multi-organ) |
 
 Each phase is an independent FastAPI router that returns structured JSON; every response also includes a two‑tier **narrative** block (`headline`, `lay`, `scientist`, `risk_level`) that explains the result in plain English and for scientists.
 
@@ -67,8 +68,11 @@ The Next.js frontend mirrors the phases as pages (`/cohort`, `/simulate`, `/caus
 > *"Does estimating a small, demonstrably identifiable set of patient-specific parameters improve short-horizon glucose-risk prediction over simpler baselines in a defined population?"*
 
 ### Auditable Pre-Clinical Boundaries
-- **Parameter Identifiability**: Structural and practical identifiability diagnostics (`backend/app/personalization/identifiability.py`) prove that estimating 29 physiological parameters from sparse glucose readings causes severe rank deficiency (condition number $> 10^{16}$). The twin restricts active UKF estimation to 4 demonstrably identifiable parameters ($S_I, V_d, k_{abs}, \text{EGP}_0$), achieving rank 4/4 and $<2\%$ parameter recovery error.
+- **36-State Physiological Architecture**: Authoritative 36-state and 29-parameter space across metabolic, cardiovascular, renal, circadian, adipose, immune, and musculoskeletal systems (`backend/app/personalization/state.py`).
+- **Parameter Identifiability**: Structural and practical identifiability diagnostics (`backend/app/personalization/identifiability.py`) prove that simultaneously estimating all 29 parameters from sparse observations causes severe ill-conditioning. Active UKF estimation isolates 7 demonstrably identifiable parameters ($S_I, \text{EGP}_0, \beta_{cell}, R_{thresh}, G_{baro}, \text{GFR}_{base}, A_{circ}$), anchoring the remaining 22 to population priors.
+- **Multi-Organ World Model**: Coupled convective circulation (`BloodTransportLayer`) coordinating dedicated organ modules for pulmonary gas exchange (`RespiratoryOrganModel`), glycogen/HGP turnover (`HepaticOrganModel`), SGLT1/incretin GI absorption (`GastrointestinalOrganModel`), and baroreflex/HPA/RAAS axis (`AutonomicEndocrineModel`), validated to ASME V&V 40 standards (`/physiology`).
 - **Baseline Benchmarking**: Short-horizon (30-min and 60-min) hypoglycemia risk ($G < 70\text{ mg/dL}$) predictions are benchmarked against naive persistence ($G_{t+\Delta t} = G_t$) and autoregressive (AR3) models (`backend/app/personalization/benchmark_baselines.py`), measuring event sensitivity, false alerts per patient-day, and lead time.
+- **4-Source Uncertainty Quantification**: Every trajectory rigorously quantifies aleatoric, epistemic, numerical solver, and structural model discrepancy (`backend/app/personalization/uncertainty.py`).
 - **Dataset Boundary**: MIMIC-IV provides inpatient/ICU and emergency-department validation. Outpatient CGM forecasting is evaluated on independent continuous ambulatory monitoring traces.
 - **Hypothesis Separation**: Counterfactual treatment recommendations and long-term complication reduction claims are separated into subsequent prospective interventional studies.
 

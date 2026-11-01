@@ -11,7 +11,10 @@ from pydantic import BaseModel, Field
 import logging
 import os
 import asyncio
-import asyncpg
+try:
+    import asyncpg
+except ImportError:
+    asyncpg = None
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

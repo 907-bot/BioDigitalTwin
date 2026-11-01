@@ -378,8 +378,9 @@ def compute_metabolic_dynamics(
     # Insulin-mediated glucose disposal (Bergman minimal model formulation)
     peripheral_uptake = SI * meta.I * meta.G
     # Hepatic glucose production suppressed by insulin (Cherrington model)
-    # Total HGP = basal * (1 - fractional suppression by insulin)
-    hepatic_prod = HGP_basal * (1 - meta.I / (meta.I + 30))
+    # Counter-regulatory glucagon response to hypoglycemia (Cherrington AD. Diabetes 1999)
+    counter_reg_glucagon = 1.0 + 2.5 * max(0.0, (85.0 - meta.G) / 85.0)
+    hepatic_prod = HGP_basal * (1 - meta.I / (meta.I + 30)) * counter_reg_glucagon
     # Renal glucose excretion above threshold (SGLT-mediated)
     renal_excr = max(0, (meta.G - RT) * 0.1) if meta.G > RT else 0
     # Basal glucose utilization (insulin-independent, e.g. brain, RBCs)

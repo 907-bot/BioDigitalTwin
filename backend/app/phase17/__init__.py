@@ -74,33 +74,41 @@ async def add_observation(obs_data: Dict[str, Any]):
     return {"status": "success"}
 
 
+class DualEstimationUpdateRequest(BaseModel):
+    patient_id: str
+    glucose_measurement: float
+    dt: float = 5.0
+
+
+class EstimateParametersRequest(BaseModel):
+    patient_id: str
+    glucose_data: list[float]
+    insulin_data: list[float]
+    carb_data: list[float]
+    timestamps: list[float]
+
+
 @router.post("/dual-estimation/update")
 async def update_dual_estimation(
-    patient_id: str,
-    glucose_measurement: float,
-    dt: float = 5.0
+    req: DualEstimationUpdateRequest
 ):
     """Update dual estimation with new glucose measurement"""
     engine = create_dual_estimation_engine()
-    result = engine.update_ukf(glucose_measurement, dt)
+    result = engine.update_ukf(req.glucose_measurement, req.dt)
     return result
 
 
 @router.post("/dual-estimation/estimate-parameters")
 async def estimate_parameters(
-    patient_id: str,
-    glucose_data: list,
-    insulin_data: list,
-    carb_data: list,
-    timestamps: list
+    req: EstimateParametersRequest
 ):
     """Estimate physiological parameters using MCMC"""
     engine = create_dual_estimation_engine()
     result = await engine.estimate_parameters_mcmc(
-        np.array(glucose_data),
-        np.array(insulin_data),
-        np.array(carb_data),
-        np.array(timestamps)
+        np.array(req.glucose_data),
+        np.array(req.insulin_data),
+        np.array(req.carb_data),
+        np.array(req.timestamps)
     )
     return result
 
@@ -386,52 +394,66 @@ async def get_enrollment_summary():
     return enrollment.get_enrollment_summary()
 
 
+class PatientPhaseUpdateRequest(BaseModel):
+    patient_id: str
+    new_phase: str
+
+
 @router.post("/clinical-study/phase")
-async def update_patient_phase(patient_id: str, new_phase: str):
+async def update_patient_phase(req: PatientPhaseUpdateRequest):
     """Update patient's current study phase"""
     from app.clinical_study.study_design import StudyPhase
     enrollment = get_patient_enrollment()
-    success = enrollment.update_patient_phase(patient_id, StudyPhase(new_phase))
+    success = enrollment.update_patient_phase(req.patient_id, StudyPhase(req.new_phase))
     return {"status": "success" if success else "failed"}
 
 
-@router.post("/clinical-study/adverse-event")
-async def record_adverse_event(
-    patient_id: str,
-    event_type: str,
-    severity: str,
-    description: str,
+class AdverseEventRequest(BaseModel):
+    patient_id: str
+    event_type: str
+    severity: str
+    description: str
     related_to_intervention: bool = False
-):
+
+
+@router.post("/clinical-study/adverse-event")
+async def record_adverse_event(req: AdverseEventRequest):
     """Record adverse event"""
     enrollment = get_patient_enrollment()
     success = enrollment.record_adverse_event(
-        patient_id, event_type, severity, description, related_to_intervention
+        req.patient_id, req.event_type, req.severity, req.description, req.related_to_intervention
     )
     return {"status": "success" if success else "failed"}
 
 
+class WithdrawPatientRequest(BaseModel):
+    patient_id: str
+    reason: str
+
+
 @router.post("/clinical-study/withdraw")
-async def withdraw_patient(patient_id: str, reason: str):
+async def withdraw_patient(req: WithdrawPatientRequest):
     """Withdraw patient from study"""
     enrollment = get_patient_enrollment()
-    success = enrollment.withdraw_patient(patient_id, reason)
+    success = enrollment.withdraw_patient(req.patient_id, req.reason)
     return {"status": "success" if success else "failed"}
 
 
-@router.post("/clinical-study/calculate-tir")
-async def calculate_tir(
-    patient_id: str,
-    intervention: str,
-    glucose_values: list,
+class CalculateTIRRequest(BaseModel):
+    patient_id: str
+    intervention: str
+    glucose_values: list
     timestamps: list
-):
+
+
+@router.post("/clinical-study/calculate-tir")
+async def calculate_tir(req: CalculateTIRRequest):
     """Calculate Time in Range (primary endpoint)"""
     endpoints = get_clinical_endpoints()
-    timestamps_dt = [datetime.fromisoformat(ts) for ts in timestamps]
-    result = endpoints.calculate_tir(glucose_values, timestamps_dt)
-    result.patient_id = patient_id
-    result.intervention = intervention
+    timestamps_dt = [datetime.fromisoformat(ts) for ts in req.timestamps]
+    result = endpoints.calculate_tir(req.glucose_values, timestamps_dt)
+    result.patient_id = req.patient_id
+    result.intervention = req.intervention
     return result.model_dump()
 
 
@@ -474,16 +496,18 @@ async def get_device_description():
     return manager.generate_device_description()
 
 
-@router.post("/regulatory/q-submission/communication")
-async def record_fda_communication(
-    date: date,
-    communication_type: str,
-    summary: str,
+class FDACommunicationRequest(BaseModel):
+    date: date
+    communication_type: str
+    summary: str
     fda_contact: Optional[str] = None
-):
+
+
+@router.post("/regulatory/q-submission/communication")
+async def record_fda_communication(req: FDACommunicationRequest):
     """Record FDA communication"""
     manager = get_q_submission_manager()
-    comm = manager.record_fda_communication(date, communication_type, summary, fda_contact)
+    comm = manager.record_fda_communication(req.date, req.communication_type, req.summary, req.fda_contact)
     return comm
 
 
@@ -519,18 +543,20 @@ async def get_risk_summary():
     return manager.generate_risk_summary()
 
 
-@router.post("/regulatory/iso-14971/post-production-event")
-async def record_post_production_event(
-    event_id: str,
-    event_type: str,
-    description: str,
-    severity: str,
-    date: Optional[date] = None,
+class PostProductionEventRequest(BaseModel):
+    event_id: str
+    event_type: str
+    description: str
+    severity: str
+    date: Optional[date] = None
     corrective_action: Optional[str] = None
-):
+
+
+@router.post("/regulatory/iso-14971/post-production-event")
+async def record_post_production_event(req: PostProductionEventRequest):
     """Record post-production safety event"""
     manager = get_iso_14971_manager()
     event = manager.record_post_production_event(
-        event_id, event_type, description, severity, date, corrective_action
+        req.event_id, req.event_type, req.description, req.severity, req.date, req.corrective_action
     )
     return event

@@ -6,9 +6,17 @@ import json
 import numpy as np
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
-import redis
+try:
+    import redis
+except ImportError:
+    redis = None
+
 import asyncio
-import asyncpg
+
+try:
+    import asyncpg
+except ImportError:
+    asyncpg = None
 from pydantic import BaseModel, Field
 import os
 
@@ -42,22 +50,34 @@ class UKFStateStore:
     """
     
     def __init__(self):
-        self.redis_client = redis.Redis(
-            host=os.getenv("REDIS_HOST", "localhost"),
-            port=int(os.getenv("REDIS_PORT", 6379)),
-            db=0,
-            decode_responses=True
-        )
+        if redis is not None:
+            try:
+                self.redis_client = redis.Redis(
+                    host=os.getenv("REDIS_HOST", "localhost"),
+                    port=int(os.getenv("REDIS_PORT", 6379)),
+                    db=0,
+                    decode_responses=True
+                )
+            except Exception:
+                self.redis_client = None
+        else:
+            self.redis_client = None
+        self._in_memory_store = {}
         self.pg_pool = None
         self._redis_ttl = 86400  # 24 hours TTL for Redis
         
     async def init_postgres(self):
         """Initialize Postgres connection pool"""
+        if asyncpg is None:
+            return
         if self.pg_pool is None:
-            self.pg_pool = await asyncpg.create_pool(
-                os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/biodigital")
-            )
-            await self._create_tables()
+            try:
+                self.pg_pool = await asyncpg.create_pool(
+                    os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/biodigital")
+                )
+                await self._create_tables()
+            except Exception:
+                self.pg_pool = None
     
     async def _create_tables(self):
         """Create UKF state tables in Postgres"""
@@ -100,42 +120,49 @@ class UKFStateStore:
             if state_dict["last_observation_time"]:
                 state_dict["last_observation_time"] = state_dict["last_observation_time"].isoformat()
             
-            self.redis_client.setex(
-                redis_key,
-                self._redis_ttl,
-                json.dumps(state_dict)
-            )
+            if self.redis_client is not None:
+                try:
+                    self.redis_client.setex(
+                        redis_key,
+                        self._redis_ttl,
+                        json.dumps(state_dict)
+                    )
+                except Exception:
+                    self._in_memory_store[redis_key] = json.dumps(state_dict)
+            else:
+                self._in_memory_store[redis_key] = json.dumps(state_dict)
             
             # Store in Postgres (cold storage)
             await self.init_postgres()
-            async with self.pg_pool.acquire() as conn:
-                await conn.execute("""
-                    INSERT INTO ukf_states (
-                        patient_id, timestamp, state_vector, covariance_matrix,
-                        process_noise, measurement_noise, glucose_mean, glucose_std,
-                        insulin_sensitivity, carb_ratio, last_observation_time,
-                        observation_count, convergence_score
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-                    ON CONFLICT (patient_id, timestamp) 
-                    DO UPDATE SET
-                        state_vector = EXCLUDED.state_vector,
-                        covariance_matrix = EXCLUDED.covariance_matrix,
-                        process_noise = EXCLUDED.process_noise,
-                        measurement_noise = EXCLUDED.measurement_noise,
-                        glucose_mean = EXCLUDED.glucose_mean,
-                        glucose_std = EXCLUDED.glucose_std,
-                        insulin_sensitivity = EXCLUDED.insulin_sensitivity,
-                        carb_ratio = EXCLUDED.carb_ratio,
-                        last_observation_time = EXCLUDED.last_observation_time,
-                        observation_count = EXCLUDED.observation_count,
-                        convergence_score = EXCLUDED.convergence_score
-                """,
-                    state.patient_id,
-                    state.timestamp,
-                    json.dumps(state.state_vector),
-                    json.dumps(state.covariance_matrix),
-                    json.dumps(state.process_noise),
-                    json.dumps(state.measurement_noise),
+            if self.pg_pool is not None:
+                async with self.pg_pool.acquire() as conn:
+                    await conn.execute("""
+                        INSERT INTO ukf_states (
+                            patient_id, timestamp, state_vector, covariance_matrix,
+                            process_noise, measurement_noise, glucose_mean, glucose_std,
+                            insulin_sensitivity, carb_ratio, last_observation_time,
+                            observation_count, convergence_score
+                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                        ON CONFLICT (patient_id, timestamp) 
+                        DO UPDATE SET
+                            state_vector = EXCLUDED.state_vector,
+                            covariance_matrix = EXCLUDED.covariance_matrix,
+                            process_noise = EXCLUDED.process_noise,
+                            measurement_noise = EXCLUDED.measurement_noise,
+                            glucose_mean = EXCLUDED.glucose_mean,
+                            glucose_std = EXCLUDED.glucose_std,
+                            insulin_sensitivity = EXCLUDED.insulin_sensitivity,
+                            carb_ratio = EXCLUDED.carb_ratio,
+                            last_observation_time = EXCLUDED.last_observation_time,
+                            observation_count = EXCLUDED.observation_count,
+                            convergence_score = EXCLUDED.convergence_score
+                    """,
+                        state.patient_id,
+                        state.timestamp,
+                        json.dumps(state.state_vector),
+                        json.dumps(state.covariance_matrix),
+                        json.dumps(state.process_noise),
+                        json.dumps(state.measurement_noise),
                     state.glucose_mean,
                     state.glucose_std,
                     state.insulin_sensitivity,
@@ -158,7 +185,14 @@ class UKFStateStore:
         try:
             # Try Redis first (hot storage)
             redis_key = f"ukf:state:{patient_id}"
-            cached = self.redis_client.get(redis_key)
+            cached = None
+            if self.redis_client is not None:
+                try:
+                    cached = self.redis_client.get(redis_key)
+                except Exception:
+                    cached = self._in_memory_store.get(redis_key)
+            else:
+                cached = self._in_memory_store.get(redis_key)
             
             if cached:
                 state_dict = json.loads(cached)
@@ -169,41 +203,48 @@ class UKFStateStore:
             
             # Fallback to Postgres (cold storage)
             await self.init_postgres()
-            async with self.pg_pool.acquire() as conn:
-                row = await conn.fetchrow(
-                    "SELECT * FROM ukf_states WHERE patient_id = $1 ORDER BY timestamp DESC LIMIT 1",
-                    patient_id
-                )
-                
-                if row:
-                    state = UKFState(
-                        patient_id=row["patient_id"],
-                        timestamp=row["timestamp"],
-                        state_vector=json.loads(row["state_vector"]),
-                        covariance_matrix=json.loads(row["covariance_matrix"]),
-                        process_noise=json.loads(row["process_noise"]),
-                        measurement_noise=json.loads(row["measurement_noise"]),
-                        glucose_mean=row["glucose_mean"],
-                        glucose_std=row["glucose_std"],
-                        insulin_sensitivity=row["insulin_sensitivity"],
-                        carb_ratio=row["carb_ratio"],
-                        last_observation_time=row["last_observation_time"],
-                        observation_count=row["observation_count"],
-                        convergence_score=row["convergence_score"]
+            if self.pg_pool is not None:
+                async with self.pg_pool.acquire() as conn:
+                    row = await conn.fetchrow(
+                        "SELECT * FROM ukf_states WHERE patient_id = $1 ORDER BY timestamp DESC LIMIT 1",
+                        patient_id
                     )
                     
-                    # Cache back to Redis
-                    state_dict = state.model_dump()
-                    state_dict["timestamp"] = state_dict["timestamp"].isoformat()
-                    if state_dict["last_observation_time"]:
-                        state_dict["last_observation_time"] = state_dict["last_observation_time"].isoformat()
-                    self.redis_client.setex(
-                        redis_key,
-                        self._redis_ttl,
-                        json.dumps(state_dict)
-                    )
-                    
-                    return state
+                    if row:
+                        state = UKFState(
+                            patient_id=row["patient_id"],
+                            timestamp=row["timestamp"],
+                            state_vector=json.loads(row["state_vector"]),
+                            covariance_matrix=json.loads(row["covariance_matrix"]),
+                            process_noise=json.loads(row["process_noise"]),
+                            measurement_noise=json.loads(row["measurement_noise"]),
+                            glucose_mean=row["glucose_mean"],
+                            glucose_std=row["glucose_std"],
+                            insulin_sensitivity=row["insulin_sensitivity"],
+                            carb_ratio=row["carb_ratio"],
+                            last_observation_time=row["last_observation_time"],
+                            observation_count=row["observation_count"],
+                            convergence_score=row["convergence_score"]
+                        )
+                        
+                        # Cache back to Redis or in-memory
+                        state_dict = state.model_dump()
+                        state_dict["timestamp"] = state_dict["timestamp"].isoformat()
+                        if state_dict["last_observation_time"]:
+                            state_dict["last_observation_time"] = state_dict["last_observation_time"].isoformat()
+                        if self.redis_client is not None:
+                            try:
+                                self.redis_client.setex(
+                                    redis_key,
+                                    self._redis_ttl,
+                                    json.dumps(state_dict)
+                                )
+                            except Exception:
+                                self._in_memory_store[redis_key] = json.dumps(state_dict)
+                        else:
+                            self._in_memory_store[redis_key] = json.dumps(state_dict)
+                        
+                        return state
             
             return None
         except Exception as e:
@@ -222,6 +263,8 @@ class UKFStateStore:
         """
         try:
             await self.init_postgres()
+            if self.pg_pool is None:
+                return []
             async with self.pg_pool.acquire() as conn:
                 rows = await conn.fetch(
                     """

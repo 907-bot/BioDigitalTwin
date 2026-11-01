@@ -996,6 +996,14 @@ app.include_router(phase17_router)
 from app.samsung import samsung_router  # noqa: E402
 app.include_router(samsung_router)
 
+# =============================================================================
+# Multi-Organ Multi-Scale Physiological World Model (Respiratory, Hepatic, GI, ANS)
+# =============================================================================
+from app.physiology.router import router as physiology_router  # noqa: E402
+from app.physiology.router_v2 import router as physiology_v2_router  # noqa: E402
+app.include_router(physiology_router)
+app.include_router(physiology_v2_router)
+
 
 # =============================================================================
 # Alias Endpoints — resolve 404s for un-prefixed routes
@@ -1022,3 +1030,137 @@ async def get_validation_summary_alias():
         return vf.get_report()
     except Exception as e:
         return {"status": "unavailable", "message": str(e)}
+
+
+@app.get("/personalization/identifiability/audit")
+async def get_identifiability_audit_alias():
+    """Alias for /personalization/v2/identifiability/audit."""
+    from app.personalization.router import identifiability_audit
+    return await identifiability_audit()
+
+
+@app.get("/personalization/baselines/benchmark")
+async def get_baselines_benchmark_alias(days: int = 14):
+    """Alias for /personalization/v2/baselines/benchmark."""
+    from app.personalization.router import baselines_benchmark
+    return await baselines_benchmark(days=days)
+
+
+# =============================================================================
+# Scientific Model Registry & Multi-Scale Integrated Twin Endpoints
+# =============================================================================
+@app.get("/scientific-registry/models")
+def list_models_endpoint():
+    """List all registered mathematical and physiological models in BioDigitalTwin."""
+    from app.registry.scientific_registry import list_registered_models
+    return {"models": list_registered_models()}
+
+
+@app.get("/scientific-registry/models/{model_id}")
+def get_model_endpoint(model_id: str):
+    """Retrieve full contract, equations, variables, units and parameters for a specific model."""
+    from app.registry.scientific_registry import get_registered_model
+    model = get_registered_model(model_id)
+    if not model:
+        raise HTTPException(status_code=404, detail=f"Model '{model_id}' not found in registry")
+    return {
+        "model_id": model.model_id,
+        "name": model.name,
+        "domain": model.domain.value,
+        "governing_equations": model.governing_equations,
+        "state_variables": [
+            {
+                "symbol": v.symbol,
+                "name": v.name,
+                "unit": v.unit,
+                "physio_min": v.physio_min,
+                "physio_max": v.physio_max,
+                "baseline_healthy": v.baseline_healthy,
+                "description": v.description,
+            }
+            for v in model.state_variables
+        ],
+        "parameters": [
+            {
+                "name": p.name,
+                "symbol": p.symbol,
+                "unit": p.unit,
+                "default_value": p.default_value,
+                "valid_range": p.valid_range,
+                "citation": p.citation,
+                "description": p.description,
+            }
+            for p in model.parameters
+        ],
+        "input_contract": model.input_contract,
+        "output_contract": model.output_contract,
+        "coupling_dependencies": model.coupling_dependencies,
+        "assumptions": model.assumptions,
+        "validation_tests": model.validation_tests,
+    }
+
+
+class MultiScaleSimulateRequest(BaseModel):
+    duration_minutes: int = Field(60, ge=1, le=1440)
+    drug_name: Optional[str] = Field("empagliflozin", description="e.g. empagliflozin, lisinopril, losartan, atenolol, insulin_regular")
+    dose_mg: float = Field(25.0, ge=0.0, le=1000.0)
+    exercise_level: float = Field(0.0, ge=0.0, le=1.0)
+    carbs_grams: float = Field(0.0, ge=0.0, le=200.0)
+
+
+@app.post("/multiscale/simulate")
+def run_multiscale_simulation(req: MultiScaleSimulateRequest):
+    """
+    Executes a multi-scale simulation bridging PK -> Receptor/Transporter -> Organ -> Whole-Body.
+    """
+    from app.personalization.integrated_bridge import MultiScaleTwinBridge
+    from app.pkpd.compartments import PKParams
+
+    bridge = MultiScaleTwinBridge()
+
+    pk_specs = {
+        "empagliflozin": PKParams(ka=1.2, CL=10.0, Vc=40.0, Vp=30.0, Q=5.0, F=0.85),
+        "lisinopril": PKParams(ka=0.5, CL=2.5, Vc=15.0, Vp=10.0, Q=2.0, F=0.25),
+        "losartan": PKParams(ka=1.5, CL=35.0, Vc=34.0, Vp=20.0, Q=8.0, F=0.33),
+        "atenolol": PKParams(ka=1.0, CL=6.0, Vc=50.0, Vp=40.0, Q=4.0, F=0.50),
+        "insulin_regular": PKParams(ka=1.2, CL=42.0, Vc=4.0, Vp=8.0, Q=10.0, F=1.0, route="sc"),
+    }
+
+    if req.drug_name and req.dose_mg > 0:
+        d = req.drug_name.lower()
+        pk = pk_specs.get(d, PKParams(ka=1.0, CL=10.0, Vc=30.0, Vp=20.0, Q=5.0, F=0.80))
+        bridge.administer_drug(d, req.dose_mg, pk)
+
+    trajectory = []
+    for step in range(req.duration_minutes):
+        inputs = {
+            "exercise": req.exercise_level if (10 <= step <= 40) else 0.0,
+            "meal_glucose": (req.carbs_grams * 0.5) if (step == 15) else 0.0,
+        }
+        state = bridge.step(dt_min=1.0, inputs=inputs)
+
+        if step % 5 == 0 or step == req.duration_minutes - 1:
+            trajectory.append({
+                "minute": step,
+                "plasma_glucose_mg_dL": round(float(state.physio_state[0]), 2),
+                "plasma_insulin_uU_mL": round(float(state.physio_state[1]), 2),
+                "sbp_mmHg": round(float(state.physio_state[5]), 1),
+                "dbp_mmHg": round(float(state.physio_state[6]), 1),
+                "heart_rate_bpm": round(float(state.physio_state[7]), 1),
+                "blood_pH": round(float(state.respiratory.pH), 3),
+                "PaCO2_mmHg": round(float(state.respiratory.PaCO2_mmHg), 1),
+                "SaO2_pct": round(float(state.respiratory.SaO2_pct), 1),
+                "plasma_renin_ng_mL_h": round(float(state.raas.plasma_renin_activity), 2),
+                "angiotensin_II_pg_mL": round(float(state.raas.angiotensin_II), 1),
+                "plasma_volume_L": round(float(state.raas.plasma_volume_L), 3),
+                "drug_plasma_conc_mg_L": {k: round(v, 4) for k, v in state.drug_plasma_conc_mg_L.items()},
+                "receptor_signals": {k: round(v, 4) for k, v in state.receptor_signals.items()},
+            })
+
+    return {
+        "status": "success",
+        "duration_minutes": req.duration_minutes,
+        "drug_administered": req.drug_name,
+        "dose_mg": req.dose_mg,
+        "trajectory": trajectory,
+    }

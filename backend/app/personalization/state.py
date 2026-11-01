@@ -294,7 +294,18 @@ class Phase3TwinState:
     circadian: CircadianState
     adipose: AdiposeLipidState
     immune: ImmuneInflamState
-    musculoskeletal: MusculoskeletalState
+    musculoskeletal: Optional[MusculoskeletalState] = None
+
+    def __post_init__(self):
+        if self.musculoskeletal is None:
+            self.musculoskeletal = MusculoskeletalState(
+                muscle_mass=30.0,
+                muscle_strength_index=50.0,
+                hypertrophy_signal=0.2,
+                bone_mineral_density=1.15,
+                osteoblast_activity=1.0,
+                osteoclast_activity=1.0,
+            )
 
     def to_array(self) -> np.ndarray:
         return np.concatenate([
@@ -310,7 +321,9 @@ class Phase3TwinState:
 
     @classmethod
     def from_array(cls, arr: np.ndarray) -> 'Phase3TwinState':
-        if len(arr) != PHYSIO_DIM:
+        if len(arr) == 30:
+            arr = np.concatenate([arr, np.array([30.0, 50.0, 0.2, 1.15, 1.0, 1.0])])
+        elif len(arr) != PHYSIO_DIM:
             raise ValueError(f"Phase3TwinState requires {PHYSIO_DIM} elements, got {len(arr)}")
         return cls(
             metabolic=MetabolicState.from_array(arr[_META_OFF:_META_OFF+METABOLIC_DIM]),
@@ -405,10 +418,6 @@ class Phase3TwinState:
     def musculoskeletal_arr(self) -> np.ndarray:
         return self.to_array()[_MUSC_OFF:_MUSC_OFF+MUSCULOSKELETAL_DIM]
 
-    @property
-    def immune_arr(self) -> np.ndarray:
-        return self.to_array()[_IMMUNE_OFF:_IMMUNE_OFF+IMMUNE_DIM]
-
 
 # Legacy alias for backward compat in imports
 FullTwinState = Phase3TwinState
@@ -465,22 +474,25 @@ class StateDynamics:
         return np.array([state.G if hasattr(state, 'G') else state[0]])
 
 
-# ── State names for serialization ─────────────────────────────
+# ── State names for serialization (36 dimensions) ─────────────
 STATE_NAMES_PHASE3 = [
-    # Metabolic
+    # Metabolic (0-4)
     "G", "I", "HGP", "PGU", "IR",
-    # Cardiovascular
+    # Cardiovascular (5-8)
     "SBP", "DBP", "HR", "HRV",
-    # Renal
+    # Renal (9-12)
     "GFR", "Na", "K", "Osm",
-    # Inflammation (legacy)
+    # Inflammation (legacy) (13)
     "CRP",
-    # Circadian
+    # Circadian (14-19)
     "CLOCK_BMAL1", "PER_CRY", "cortisol", "melatonin",
     "circadian_phase", "sleep_pressure",
-    # Adipose-Lipid
+    # Adipose-Lipid (20-24)
     "fat_mass", "FFA", "LDL", "HDL", "TG",
-    # Immune-Inflammatory
+    # Immune-Inflammatory (25-29)
     "IL6_proxy", "TNFa_proxy", "M1_M2_ratio",
     "NFkB_activity", "InflammatoryLoad",
+    # Musculoskeletal (30-35)
+    "muscle_mass", "muscle_strength_index", "hypertrophy_signal",
+    "bone_mineral_density", "osteoblast_activity", "osteoclast_activity",
 ]

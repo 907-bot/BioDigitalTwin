@@ -7,7 +7,7 @@ import pytest
 from app.personalization import PersonalizationEngine, create_personalization_engine
 from app.personalization.state import (
     PHYSIO_DIM, PARAM_DIM, OBS_DIM,
-    CircadianState, AdiposeLipidState, ImmuneInflamState,
+    CircadianState, AdiposeLipidState, ImmuneInflamState, MusculoskeletalState,
     Phase3TwinState, MetabolicState, CardioState, RenalState, InflammatoryState,
 )
 from app.personalization.dynamics import (
@@ -42,6 +42,7 @@ BASE_STATE = np.array([
     1.2, 0.8, 350.0, 10.0, 0.0, 0.3,          # Circadian
     20.0, 0.5, 100.0, 50.0, 120.0,            # Adipose
     1.0, 0.5, 0.5, 0.2, 15.0,                 # Immune
+    30.0, 50.0, 0.2, 1.15, 1.0, 1.0,          # Musculoskeletal
 ])
 
 
@@ -49,10 +50,10 @@ BASE_STATE = np.array([
 
 class TestStateDimensions:
     def test_total_physio_dim(self):
-        assert PHYSIO_DIM == 30
+        assert PHYSIO_DIM == 36
 
     def test_param_dim(self):
-        assert PARAM_DIM == 25
+        assert PARAM_DIM == 29
 
     def test_obs_dim(self):
         assert OBS_DIM == 15
@@ -71,6 +72,7 @@ class TestStateDimensions:
         assert isinstance(twin.circadian, CircadianState)
         assert isinstance(twin.adipose, AdiposeLipidState)
         assert isinstance(twin.immune, ImmuneInflamState)
+        assert isinstance(twin.musculoskeletal, MusculoskeletalState)
 
 
 # ── Circadian Tests ──────────────────────────────────────────
@@ -239,6 +241,7 @@ class TestPersonalizationEngine:
         assert len(eng.get_circadian_state()) == 6
         assert len(eng.get_adipose_state()) == 5
         assert len(eng.get_immune_state()) == 5
+        assert len(eng.get_musculoskeletal_state()) == 6
 
     def test_drift_status(self):
         eng = PersonalizationEngine()

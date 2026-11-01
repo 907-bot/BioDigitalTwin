@@ -905,5 +905,6 @@ class TestPosteriorPredictive:
         engine = PersonalizationEngine()
         ue = UncertaintyEngine(engine)
         traj = ue.posterior_predictive_samples(n_samples=5, horizon=10)
-        assert traj.shape == (5, 10, 30)
+        from app.personalization.state import PHYSIO_DIM
+        assert traj.shape == (5, 10, PHYSIO_DIM)
         assert np.all(np.isfinite(traj))

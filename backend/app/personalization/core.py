@@ -640,26 +640,26 @@ class PersonalizationEngine:
         return self.filter.get_parameters()
 
     def get_metabolic_state(self) -> np.ndarray:
-        return self.filter.get_physio_state()[_META_OFF:_META_OFF+METABOLIC_DIM]
+        return self.get_twin_state()[_META_OFF:_META_OFF+METABOLIC_DIM]
 
     def get_cardio_state(self) -> np.ndarray:
-        return self.filter.get_physio_state()[_CARDIO_OFF:_CARDIO_OFF+CARDIO_DIM]
+        return self.get_twin_state()[_CARDIO_OFF:_CARDIO_OFF+CARDIO_DIM]
 
     def get_renal_state(self) -> np.ndarray:
-        return self.filter.get_physio_state()[_RENAL_OFF:_RENAL_OFF+RENAL_DIM]
+        return self.get_twin_state()[_RENAL_OFF:_RENAL_OFF+RENAL_DIM]
 
     def get_circadian_state(self) -> np.ndarray:
-        return self.filter.get_physio_state()[_CIRC_OFF:_CIRC_OFF+CIRCADIAN_DIM]
+        return self.get_twin_state()[_CIRC_OFF:_CIRC_OFF+CIRCADIAN_DIM]
 
     def get_adipose_state(self) -> np.ndarray:
-        return self.filter.get_physio_state()[_ADIP_OFF:_ADIP_OFF+ADIPOSE_DIM]
+        return self.get_twin_state()[_ADIP_OFF:_ADIP_OFF+ADIPOSE_DIM]
 
     def get_immune_state(self) -> np.ndarray:
-        return self.filter.get_physio_state()[_IMMUNE_OFF:_IMMUNE_OFF+IMMUNE_DIM]
+        return self.get_twin_state()[_IMMUNE_OFF:_IMMUNE_OFF+IMMUNE_DIM]
 
     def get_musculoskeletal_state(self) -> np.ndarray:
         from .state import _MUSC_OFF, MUSCULOSKELETAL_DIM
-        return self.filter.get_physio_state()[_MUSC_OFF:_MUSC_OFF+MUSCULOSKELETAL_DIM]
+        return self.get_twin_state()[_MUSC_OFF:_MUSC_OFF+MUSCULOSKELETAL_DIM]
 
     def seed_from_personal_metrics(
         self,

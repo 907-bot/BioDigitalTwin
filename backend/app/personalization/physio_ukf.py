@@ -27,6 +27,8 @@ PHYSIO_CLAMPS = [
     (18, 0, 6.29), (19, 0, 1), (20, 2, 100), (21, 0.1, 2.0),
     (22, 20, 300), (23, 10, 120), (24, 20, 800), (25, 0, 10),
     (26, 0, 10), (27, 0, 2), (28, 0, 1), (29, 0, 100),
+    (30, 5.0, 90.0), (31, 0.0, 200.0), (32, 0.0, 5.0),
+    (33, 0.3, 3.0), (34, 0.01, 10.0), (35, 0.01, 10.0),
 ]
 
 # Map state index -> (low, high)
@@ -61,8 +63,8 @@ class PhysioOnlyUKF:
         self.R[OBS_DIM-3, OBS_DIM-3] = obs_noise_scale * 5.0
         self.R[OBS_DIM-2, OBS_DIM-2] = obs_noise_scale * 5.0
         self.R[OBS_DIM-1, OBS_DIM-1] = obs_noise_scale * 5.0
-        # UKF parameters
-        alpha, beta, kappa = 1e-3, 2.0, 0.0
+        # UKF parameters: alpha=0.3 provides numerical stability for n=36 state dimensions
+        alpha, beta, kappa = 0.3, 2.0, 0.0
         n = PHYSIO_DIM
         lam = alpha**2 * (n + kappa) - n
         self._lam = lam
@@ -107,6 +109,13 @@ class PhysioOnlyUKF:
         state[27] = 0.5
         state[28] = 0.2
         state[29] = 15.0
+        # Musculoskeletal states (30-35)
+        state[30] = 30.0   # muscle_mass (kg)
+        state[31] = 50.0   # muscle_strength_index
+        state[32] = 0.2    # hypertrophy_signal
+        state[33] = 1.15   # bone_mineral_density (g/cm^2)
+        state[34] = 1.0    # osteoblast_activity
+        state[35] = 1.0    # osteoclast_activity
         return state
 
     @staticmethod
@@ -225,6 +234,15 @@ class PhysioOnlyUKF:
 
     def get_state(self) -> np.ndarray:
         return self._mu.copy()
+
+    def get_physio_state(self) -> np.ndarray:
+        return self._mu.copy()
+
+    def get_state_covariance(self) -> np.ndarray:
+        return self._cov.copy()
+
+    def get_physio_covariance(self) -> np.ndarray:
+        return self._cov.copy()
 
     def get_covariance(self) -> np.ndarray:
         return self._cov.copy()

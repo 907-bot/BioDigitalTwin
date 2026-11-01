@@ -596,7 +596,10 @@ class StructuralCausalModel:
         else:
             _custom_intervention = None
 
-        physio_state = twin_state[:PHYSIO_DIM].copy()
+        if len(twin_state) < PHYSIO_DIM:
+            physio_state = np.pad(twin_state, (0, PHYSIO_DIM - len(twin_state)), 'constant')
+        else:
+            physio_state = twin_state[:PHYSIO_DIM].copy()
         params = (twin_state[PHYSIO_DIM:PHYSIO_DIM + 25].copy()
                   if len(twin_state) > PHYSIO_DIM else DEFAULT_PARAMS.copy())
 

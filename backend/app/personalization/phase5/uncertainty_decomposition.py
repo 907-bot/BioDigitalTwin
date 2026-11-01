@@ -10,6 +10,7 @@ import numpy as np
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Tuple
 from app.personalization.dynamics import DEFAULT_PARAMS
+from app.personalization.state import PHYSIO_DIM
 
 
 @dataclass
@@ -104,9 +105,9 @@ class UncertaintyDecomposer:
             state = engine.get_twin_state()
             params, param_cov = engine.get_parameters()
         except Exception:
-            state = np.random.randn(30) * 10 + 100
+            state = np.random.randn(PHYSIO_DIM) * 10 + 100
             params = DEFAULT_PARAMS.copy()
-            param_cov = np.eye(25) * 0.1
+            param_cov = np.eye(len(params)) * 0.1
         n_physio = len(state)
         base_var = np.var(state) + 1.0
         param_samples = self.rng.multivariate_normal(

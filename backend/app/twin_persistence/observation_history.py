@@ -8,8 +8,15 @@ import pandas as pd
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, Field
-import redis
-import asyncpg
+try:
+    import redis
+except ImportError:
+    redis = None
+
+try:
+    import asyncpg
+except ImportError:
+    asyncpg = None
 import os
 
 
@@ -40,22 +47,34 @@ class ObservationHistory:
     """
     
     def __init__(self):
-        self.redis_client = redis.Redis(
-            host=os.getenv("REDIS_HOST", "localhost"),
-            port=int(os.getenv("REDIS_PORT", 6379)),
-            db=1,  # Use different DB for observations
-            decode_responses=True
-        )
+        if redis is not None:
+            try:
+                self.redis_client = redis.Redis(
+                    host=os.getenv("REDIS_HOST", "localhost"),
+                    port=int(os.getenv("REDIS_PORT", 6379)),
+                    db=1,  # Use different DB for observations
+                    decode_responses=True
+                )
+            except Exception:
+                self.redis_client = None
+        else:
+            self.redis_client = None
+        self._in_memory_obs = {}
         self.pg_pool = None
         self._redis_ttl = 604800  # 7 days TTL for Redis
         
     async def init_postgres(self):
         """Initialize Postgres connection pool"""
+        if asyncpg is None:
+            return
         if self.pg_pool is None:
-            self.pg_pool = await asyncpg.create_pool(
-                os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/biodigital")
-            )
-            await self._create_tables()
+            try:
+                self.pg_pool = await asyncpg.create_pool(
+                    os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/biodigital")
+                )
+                await self._create_tables()
+            except Exception:
+                self.pg_pool = None
     
     async def _create_tables(self):
         """Create observation tables in Postgres"""
@@ -99,33 +118,40 @@ class ObservationHistory:
             
             # Use Redis sorted set for time-series data
             score = observation.timestamp.timestamp()
-            self.redis_client.zadd(redis_key, {json.dumps(obs_dict): score})
-            self.redis_client.expire(redis_key, self._redis_ttl)
+            if self.redis_client is not None:
+                try:
+                    self.redis_client.zadd(redis_key, {json.dumps(obs_dict): score})
+                    self.redis_client.expire(redis_key, self._redis_ttl)
+                except Exception:
+                    self._in_memory_obs.setdefault(redis_key, []).append((score, obs_dict))
+            else:
+                self._in_memory_obs.setdefault(redis_key, []).append((score, obs_dict))
             
             # Store in Postgres (cold storage)
             await self.init_postgres()
-            async with self.pg_pool.acquire() as conn:
-                await conn.execute("""
-                    INSERT INTO observations (
-                        patient_id, observation_type, value, unit, timestamp,
-                        source, device_id, quality_score, metadata,
-                        fhir_resource_type, status, code_system, code
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-                """,
-                    observation.patient_id,
-                    observation.observation_type,
-                    observation.value,
-                    observation.unit,
-                    observation.timestamp,
-                    observation.source,
-                    observation.device_id,
-                    observation.quality_score,
-                    json.dumps(observation.metadata),
-                    observation.fhir_resource_type,
-                    observation.status,
-                    observation.code_system,
-                    observation.code
-                )
+            if self.pg_pool is not None:
+                async with self.pg_pool.acquire() as conn:
+                    await conn.execute("""
+                        INSERT INTO observations (
+                            patient_id, observation_type, value, unit, timestamp,
+                            source, device_id, quality_score, metadata,
+                            fhir_resource_type, status, code_system, code
+                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                    """,
+                        observation.patient_id,
+                        observation.observation_type,
+                        observation.value,
+                        observation.unit,
+                        observation.timestamp,
+                        observation.source,
+                        observation.device_id,
+                        observation.quality_score,
+                        json.dumps(observation.metadata),
+                        observation.fhir_resource_type,
+                        observation.status,
+                        observation.code_system,
+                        observation.code
+                    )
             
             return True
         except Exception as e:
@@ -167,9 +193,17 @@ class ObservationHistory:
                 min_score = start_time.timestamp()
                 max_score = end_time.timestamp()
                 
-                results = self.redis_client.zrangebyscore(
-                    redis_key, min_score, max_score, start=0, num=limit
-                )
+                results = []
+                if self.redis_client is not None:
+                    try:
+                        results = self.redis_client.zrangebyscore(
+                            redis_key, min_score, max_score, start=0, num=limit
+                        )
+                    except Exception:
+                        results = []
+                else:
+                    items = self._in_memory_obs.get(redis_key, [])
+                    results = [json.dumps(d) for s, d in items if min_score <= s <= max_score][:limit]
                 
                 if results:
                     observations = []
@@ -181,43 +215,44 @@ class ObservationHistory:
             
             # Fallback to Postgres
             await self.init_postgres()
-            async with self.pg_pool.acquire() as conn:
-                query = """
-                    SELECT * FROM observations 
-                    WHERE patient_id = $1 
-                    AND timestamp BETWEEN $2 AND $3
-                """
-                params = [patient_id, start_time, end_time]
-                
-                if observation_type:
-                    query += " AND observation_type = $4"
-                    params.append(observation_type)
-                
-                query += " ORDER BY timestamp DESC LIMIT $5"
-                params.append(limit)
-                
-                rows = await conn.fetch(query, *params)
-                
-                observations = []
-                for row in rows:
-                    obs = Observation(
-                        patient_id=row["patient_id"],
-                        observation_type=row["observation_type"],
-                        value=row["value"],
-                        unit=row["unit"],
-                        timestamp=row["timestamp"],
-                        source=row["source"],
-                        device_id=row["device_id"],
-                        quality_score=row["quality_score"],
-                        metadata=json.loads(row["metadata"]) if row["metadata"] else {},
-                        fhir_resource_type=row["fhir_resource_type"],
-                        status=row["status"],
-                        code_system=row["code_system"],
-                        code=row["code"]
-                    )
-                    observations.append(obs)
-                
-                return observations
+            if self.pg_pool is not None:
+                async with self.pg_pool.acquire() as conn:
+                    query = """
+                        SELECT * FROM observations 
+                        WHERE patient_id = $1 
+                        AND timestamp BETWEEN $2 AND $3
+                    """
+                    params = [patient_id, start_time, end_time]
+                    
+                    if observation_type:
+                        query += " AND observation_type = $4"
+                        params.append(observation_type)
+                    
+                    query += " ORDER BY timestamp DESC LIMIT $5"
+                    params.append(limit)
+                    
+                    rows = await conn.fetch(query, *params)
+                    
+                    observations = []
+                    for row in rows:
+                        obs = Observation(
+                            patient_id=row["patient_id"],
+                            observation_type=row["observation_type"],
+                            value=row["value"],
+                            unit=row["unit"],
+                            timestamp=row["timestamp"],
+                            source=row["source"],
+                            device_id=row["device_id"],
+                            quality_score=row["quality_score"],
+                            metadata=json.loads(row["metadata"]) if row["metadata"] else {},
+                            fhir_resource_type=row["fhir_resource_type"],
+                            status=row["status"],
+                            code_system=row["code_system"],
+                            code=row["code"]
+                        )
+                        observations.append(obs)
+                    
+                    return observations
         except Exception as e:
             print(f"Error retrieving observations: {e}")
             return []
