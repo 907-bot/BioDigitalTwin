@@ -26,12 +26,13 @@ INFLAM_DIM = INFLAMMATION_DIM
 CIRCADIAN_DIM = 6
 ADIPOSE_DIM = 5
 IMMUNE_DIM = 5
+MUSCULOSKELETAL_DIM = 6
 
 # ── Total physiological state dimension ───────────────────────
 PHYSIO_DIM = (
     METABOLIC_DIM + CARDIO_DIM + RENAL_DIM + INFLAMMATION_DIM +
-    CIRCADIAN_DIM + ADIPOSE_DIM + IMMUNE_DIM
-)  # = 30
+    CIRCADIAN_DIM + ADIPOSE_DIM + IMMUNE_DIM + MUSCULOSKELETAL_DIM
+)  # = 36
 
 # ── Parameter dimensions ──────────────────────────────────────
 METABOLIC_PARAM_DIM = 4
@@ -40,11 +41,12 @@ RENAL_PARAM_DIM = 4
 CIRCADIAN_PARAM_DIM = 4   # period, amplitude, light_sensitivity, melatonin_rate
 ADIPOSE_PARAM_DIM = 5     # lipolysis_rate, lipogenesis_rate, LDL_clearance, HDL_production, FFA_uptake
 IMMUNE_PARAM_DIM = 4      # M1_activation, NFkB_sensitivity, vagal_tone_effect, IL6_clearance
+MUSCULOSKELETAL_PARAM_DIM = 4 # mTOR_activation_rate, protein_synthesis_efficiency, bone_remodeling_rate, mechanical_strain_sensitivity
 
 PARAM_DIM = (
     METABOLIC_PARAM_DIM + CARDIO_PARAM_DIM + RENAL_PARAM_DIM +
-    CIRCADIAN_PARAM_DIM + ADIPOSE_PARAM_DIM + IMMUNE_PARAM_DIM
-)  # = 25
+    CIRCADIAN_PARAM_DIM + ADIPOSE_PARAM_DIM + IMMUNE_PARAM_DIM + MUSCULOSKELETAL_PARAM_DIM
+)  # = 29
 
 # ── Observation dimension ─────────────────────────────────────
 OBS_DIM = 15
@@ -59,6 +61,7 @@ _INFL_OFF = _RENAL_OFF + RENAL_DIM
 _CIRC_OFF = _INFL_OFF + INFLAMMATION_DIM
 _ADIP_OFF = _CIRC_OFF + CIRCADIAN_DIM
 _IMMUNE_OFF = _ADIP_OFF + ADIPOSE_DIM
+_MUSC_OFF = _IMMUNE_OFF + IMMUNE_DIM
 
 
 # ====================================================================
@@ -238,13 +241,52 @@ class ImmuneInflamState:
         )
 
 
+@dataclass
+class MusculoskeletalState:
+    """
+    Musculoskeletal state at tissue & protein synthesis signaling level.
+    - muscle_mass: skeletal muscle mass (kg)
+    - muscle_strength_index: relative muscle strength capacity (0-100)
+    - hypertrophy_signal: mTOR activation & protein synthesis signal (0-1)
+    - bone_mineral_density: total body BMD (g/cm^2)
+    - osteoblast_activity: bone formation rate multiplier (0.1-5.0)
+    - osteoclast_activity: bone resorption rate multiplier (0.1-5.0)
+    """
+    muscle_mass: float           # Skeletal muscle mass (kg)
+    muscle_strength_index: float # Relative strength (0-100)
+    hypertrophy_signal: float    # mTOR protein synthesis signal (0-1)
+    bone_mineral_density: float  # BMD (g/cm^2)
+    osteoblast_activity: float   # Bone formation multiplier (0.1-5.0)
+    osteoclast_activity: float   # Bone resorption multiplier (0.1-5.0)
+
+    def to_array(self) -> np.ndarray:
+        return np.array([
+            self.muscle_mass, self.muscle_strength_index, self.hypertrophy_signal,
+            self.bone_mineral_density, self.osteoblast_activity, self.osteoclast_activity
+        ])
+
+    @classmethod
+    def from_array(cls, arr: np.ndarray) -> 'MusculoskeletalState':
+        return cls(
+            muscle_mass=float(arr[0]), muscle_strength_index=float(arr[1]),
+            hypertrophy_signal=float(arr[2]), bone_mineral_density=float(arr[3]),
+            osteoblast_activity=float(arr[4]), osteoclast_activity=float(arr[5])
+        )
+
+    def copy(self) -> 'MusculoskeletalState':
+        return MusculoskeletalState(
+            self.muscle_mass, self.muscle_strength_index, self.hypertrophy_signal,
+            self.bone_mineral_density, self.osteoblast_activity, self.osteoclast_activity
+        )
+
+
 # ====================================================================
 # Phase 3: Complete Whole-Body Twin State
 # ====================================================================
 
 @dataclass
 class Phase3TwinState:
-    """Complete Phase 3 state: 8 subsystems, 30 dimensions."""
+    """Complete Phase 3 state: 8 subsystems, 36 dimensions."""
     metabolic: MetabolicState
     cardio: CardioState
     renal: RenalState
@@ -252,6 +294,7 @@ class Phase3TwinState:
     circadian: CircadianState
     adipose: AdiposeLipidState
     immune: ImmuneInflamState
+    musculoskeletal: MusculoskeletalState
 
     def to_array(self) -> np.ndarray:
         return np.concatenate([
@@ -262,6 +305,7 @@ class Phase3TwinState:
             self.circadian.to_array(),
             self.adipose.to_array(),
             self.immune.to_array(),
+            self.musculoskeletal.to_array(),
         ])
 
     @classmethod
@@ -276,6 +320,7 @@ class Phase3TwinState:
             circadian=CircadianState.from_array(arr[_CIRC_OFF:_CIRC_OFF+CIRCADIAN_DIM]),
             adipose=AdiposeLipidState.from_array(arr[_ADIP_OFF:_ADIP_OFF+ADIPOSE_DIM]),
             immune=ImmuneInflamState.from_array(arr[_IMMUNE_OFF:_IMMUNE_OFF+IMMUNE_DIM]),
+            musculoskeletal=MusculoskeletalState.from_array(arr[_MUSC_OFF:_MUSC_OFF+MUSCULOSKELETAL_DIM]),
         )
 
     def is_valid(self) -> bool:
@@ -292,6 +337,9 @@ class Phase3TwinState:
             "IL6_proxy": (0, 10), "TNFa_proxy": (0, 10),
             "M1_M2_ratio": (0, 2), "NFkB_activity": (0, 1),
             "InflammatoryLoad": (0, 100),
+            "muscle_mass": (5, 90), "muscle_strength_index": (0, 200),
+            "hypertrophy_signal": (0, 5), "bone_mineral_density": (0.3, 3.0),
+            "osteoblast_activity": (0.01, 10.0), "osteoclast_activity": (0.01, 10.0),
         }
         arr = self.to_array()
         violations = []
@@ -317,6 +365,9 @@ class Phase3TwinState:
             "IL6_proxy": (0, 10), "TNFa_proxy": (0, 10),
             "M1_M2_ratio": (0, 2), "NFkB_activity": (0, 1),
             "InflammatoryLoad": (0, 100),
+            "muscle_mass": (5, 90), "muscle_strength_index": (0, 200),
+            "hypertrophy_signal": (0, 5), "bone_mineral_density": (0.3, 3.0),
+            "osteoblast_activity": (0.01, 10.0), "osteoclast_activity": (0.01, 10.0),
         }
         arr = self.to_array()
         for i, (name, (lo, hi)) in enumerate(bounds.items()):
@@ -345,6 +396,14 @@ class Phase3TwinState:
     @property
     def adipose_arr(self) -> np.ndarray:
         return self.to_array()[_ADIP_OFF:_ADIP_OFF+ADIPOSE_DIM]
+
+    @property
+    def immune_arr(self) -> np.ndarray:
+        return self.to_array()[_IMMUNE_OFF:_IMMUNE_OFF+IMMUNE_DIM]
+
+    @property
+    def musculoskeletal_arr(self) -> np.ndarray:
+        return self.to_array()[_MUSC_OFF:_MUSC_OFF+MUSCULOSKELETAL_DIM]
 
     @property
     def immune_arr(self) -> np.ndarray:

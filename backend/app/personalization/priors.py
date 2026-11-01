@@ -57,6 +57,12 @@ NFKB_SENSITIVITY_PRIOR = NormalPrior(mu=0.5, sigma=0.15)           # NF-κB gain
 VAGAL_TONE_EFFECT_PRIOR = NormalPrior(mu=0.3, sigma=0.1)           # ACh anti-inflammatory
 IL6_CLEARANCE_PRIOR = LogNormalPrior(mu=-3.9, sigma=0.25)          # IL-6 clearance
 
+# ── Musculoskeletal (Phase 17 extension) ──
+MTOR_ACTIVATION_PRIOR = LogNormalPrior(mu=-1.5, sigma=0.3)         # mTOR activation rate
+PROTEIN_SYNTHESIS_PRIOR = NormalPrior(mu=0.8, sigma=0.2)           # MPS efficiency factor
+BONE_REMODELING_PRIOR = LogNormalPrior(mu=-3.0, sigma=0.35)         # Bone remodeling rate
+MECHANICAL_STRAIN_PRIOR = NormalPrior(mu=1.2, sigma=0.25)          # Strain sensitivity
+
 # ── Complete parameter list ──
 PRIORS: List[PriorDistribution] = [
     # Metabolic (0-3)
@@ -71,6 +77,8 @@ PRIORS: List[PriorDistribution] = [
     LIPOLYSIS_RATE_PRIOR, LIPOGENESIS_RATE_PRIOR, LDL_CLEARANCE_PRIOR, HDL_PRODUCTION_PRIOR, FFA_UPTAKE_PRIOR,
     # Immune (21-24)
     M1_ACTIVATION_PRIOR, NFKB_SENSITIVITY_PRIOR, VAGAL_TONE_EFFECT_PRIOR, IL6_CLEARANCE_PRIOR,
+    # Musculoskeletal (25-28)
+    MTOR_ACTIVATION_PRIOR, PROTEIN_SYNTHESIS_PRIOR, BONE_REMODELING_PRIOR, MECHANICAL_STRAIN_PRIOR,
 ]
 
 PARAMETER_NAMES = [
@@ -86,6 +94,8 @@ PARAMETER_NAMES = [
     "lipolysis_rate", "lipogenesis_rate", "LDL_clearance", "HDL_production", "FFA_uptake",
     # Immune (21-24)
     "M1_activation", "NFkB_sensitivity", "vagal_tone_effect", "IL6_clearance",
+    # Musculoskeletal (25-28)
+    "mTOR_activation_rate", "protein_synthesis_efficiency", "bone_remodeling_rate", "mechanical_strain_sensitivity",
 ]
 
 PARAMETER_RANGES = {
@@ -120,6 +130,11 @@ PARAMETER_RANGES = {
     "NFkB_sensitivity": (0.1, 1.0),
     "vagal_tone_effect": (0.05, 0.6),
     "IL6_clearance": (0.005, 0.1),
+    # Musculoskeletal
+    "mTOR_activation_rate": (0.05, 1.5),
+    "protein_synthesis_efficiency": (0.2, 2.0),
+    "bone_remodeling_rate": (0.001, 0.1),
+    "mechanical_strain_sensitivity": (0.2, 3.0),
 }
 
 # ===================================================================
@@ -228,8 +243,6 @@ def get_subgroup_priors(
 def _rebuild_prior(prior_type, mu, sigma, original):
     """Rebuild a prior distribution with a new mean (mu is the new distribution mean, not log)."""
     if prior_type == LogNormalPrior:
-        # LogNormal: mean = exp(mu_log + sigma^2/2)
-        # Solve for new mu_log: new_mu_log = log(new_mean) - sigma^2/2
         new_mu = np.log(max(mu, 1e-10)) - 0.5 * sigma ** 2
         return LogNormalPrior(mu=new_mu, sigma=sigma)
     elif prior_type == NormalPrior:
@@ -263,6 +276,7 @@ STATE_NAMES = [
     "circadian_phase","sleep_pressure",
     "fat_mass","FFA","LDL","HDL","TG",
     "IL6_proxy","TNFa_proxy","M1_M2_ratio","NFkB_activity","InflammatoryLoad",
+    "muscle_mass","muscle_strength_index","hypertrophy_signal","bone_mineral_density","osteoblast_activity","osteoclast_activity"
 ]
 
 __all__ = [
@@ -270,3 +284,4 @@ __all__ = [
     "validate_parameter", "validate_all_parameters", "PriorDistribution",
     "get_subgroup_priors", "SUBGROUP_ADJUSTMENTS",
 ]
+

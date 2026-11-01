@@ -4,7 +4,7 @@ Phase 3 Router: Whole-body cellular digital twin API.
 simulation, virtual cohorts, uncertainty quantification, and explainability.
 """
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Body
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 import numpy as np
@@ -123,6 +123,14 @@ def _build_response(patient_id: str, eng: PersonalizationEngine) -> TwinStateRes
             "M1_M2_ratio": float(state[27]), "NFkB": float(state[28]),
             "InflammatoryLoad": float(state[29]),
         },
+        "musculoskeletal": {
+            "muscle_mass": float(state[30]) if len(state) > 30 else 30.0,
+            "muscle_strength_index": float(state[31]) if len(state) > 31 else 50.0,
+            "hypertrophy_signal": float(state[32]) if len(state) > 32 else 0.1,
+            "bone_mineral_density": float(state[33]) if len(state) > 33 else 1.2,
+            "osteoblast_activity": float(state[34]) if len(state) > 34 else 1.0,
+            "osteoclast_activity": float(state[35]) if len(state) > 35 else 1.0,
+        },
     }
 
     return TwinStateResponse(
@@ -139,7 +147,61 @@ def _build_response(patient_id: str, eng: PersonalizationEngine) -> TwinStateRes
     )
 
 
+class PersonalMetricsIntakeRequest(BaseModel):
+    patient_id: str = Field(..., example="P_USER_001")
+    age: float = Field(35.0, ge=18, le=120)
+    sex: str = Field("male", pattern="^(male|female)$")
+    height_cm: float = Field(175.0, ge=100, le=250)
+    weight_kg: float = Field(70.0, ge=30, le=250)
+    resting_hr: float = Field(70.0, ge=30, le=200)
+    resting_sbp: float = Field(120.0, ge=70, le=220)
+    resting_dbp: float = Field(80.0, ge=40, le=140)
+    body_fat_pct: float = Field(18.0, ge=3, le=60)
+    skeletal_muscle_mass_kg: Optional[float] = Field(None, ge=5, le=100)
+    bone_mineral_density_g_cm2: Optional[float] = Field(None, ge=0.4, le=2.5)
+    vo2_max: Optional[float] = Field(42.0, ge=10, le=90)
+    fasting_glucose: float = Field(92.0, ge=50, le=300)
+    crp: float = Field(1.0, ge=0.1, le=50.0)
+    serum_creatinine: float = Field(0.9, ge=0.2, le=10.0)
+    has_diabetes: bool = False
+    has_hypertension: bool = False
+    has_ckd: bool = False
+
+
 # ── Core Endpoints ────────────────────────────────────────────
+
+@router.post("/seed-real-twin", response_model=TwinStateResponse)
+async def seed_real_twin(req: PersonalMetricsIntakeRequest):
+    """Seed a personalized digital twin directly from user's real physical & body composition metrics."""
+    height_m = req.height_cm / 100.0
+    calculated_bmi = req.weight_kg / (height_m ** 2)
+
+    eng = create_personalization_engine(
+        age=req.age, sex=req.sex, bmi=calculated_bmi,
+        has_diabetes=req.has_diabetes,
+        has_hypertension=req.has_hypertension,
+        has_ckd=req.has_ckd,
+    )
+    eng.age = req.age
+    eng.sex = req.sex
+
+    eng.seed_from_personal_metrics(
+        height_cm=req.height_cm,
+        weight_kg=req.weight_kg,
+        resting_hr=req.resting_hr,
+        resting_sbp=req.resting_sbp,
+        resting_dbp=req.resting_dbp,
+        body_fat_pct=req.body_fat_pct,
+        skeletal_muscle_mass_kg=req.skeletal_muscle_mass_kg,
+        bone_mineral_density_g_cm2=req.bone_mineral_density_g_cm2,
+        vo2_max=req.vo2_max,
+        fasting_glucose=req.fasting_glucose,
+        crp=req.crp,
+        serum_creatinine=req.serum_creatinine,
+    )
+
+    _engines[req.patient_id] = eng
+    return _build_response(req.patient_id, eng)
 
 @router.post("/initialize", response_model=TwinStateResponse)
 async def initialize(req: InitRequest):
@@ -302,6 +364,65 @@ async def run_counterfactual(
     }
 
 
+# ── Workout & Progressive Overload ──────────────────────────────
+
+@router.post("/workout/simulate")
+async def simulate_workout(req: Any = Body(...)):
+    """Simulate acute workout response and multi-week progressive overload adaptation."""
+    from app.dynamics.workout_simulator import WorkoutSessionRequest, simulate_workout_trajectory
+    
+    patient_id = req.get("patient_id", "P_USER_001") if isinstance(req, dict) else "P_USER_001"
+    eng = _engines.get(patient_id)
+    
+    init_muscle = 34.0
+    init_strength = 50.0
+    init_bmd = 1.20
+    init_hr = 70.0
+    init_fat = 14.0
+
+    if eng:
+        state = eng.get_twin_state()
+        if len(state) > 33:
+            init_muscle = float(state[30])
+            init_strength = float(state[31])
+            init_bmd = float(state[33])
+        init_hr = float(state[7])
+        init_fat = float(state[20])
+
+    data = req if isinstance(req, dict) else req.model_dump()
+    return simulate_workout_trajectory(
+        initial_muscle_mass=init_muscle,
+        initial_strength=init_strength,
+        initial_bmd=init_bmd,
+        initial_resting_hr=init_hr,
+        initial_fat_mass=init_fat,
+        workout_type=data.get("workout_type", "hypertrophy"),
+        intensity_pct=float(data.get("intensity_pct", 75.0)),
+        duration_mins=float(data.get("duration_mins", 60.0)),
+        sets=int(data.get("sets", 4)),
+        reps=int(data.get("reps", 10)),
+        frequency_per_week=int(data.get("frequency_per_week", 4)),
+        protein_intake_g_day=float(data.get("protein_intake_g_day", 140.0)),
+        horizon_days=int(data.get("horizon_days", 30)),
+    )
+
+
+# ── Cellular & Sub-Organ Simulation ────────────────────────────
+
+@router.post("/cellular/simulate")
+async def simulate_cellular(req: Any = Body(...)):
+    """Simulate sub-organ cellular dynamics (Cytokine cascades, Hepatocyte metabolism/NAPQI toxicity, Hypothalamic Thermoregulation)."""
+    from app.personalization.cellular_simulator import CellularSimulationRequest, simulate_cellular_suborgan
+    data = req if isinstance(req, dict) else req.model_dump()
+    return simulate_cellular_suborgan(
+        simulation_type=data.get("simulation_type", "fever_thermoregulation"),
+        pyrogen_load=float(data.get("pyrogen_load", 0.8)),
+        drug_dose_mg=float(data.get("drug_dose_mg", 1000.0)),
+        drug_name=data.get("drug_name", "paracetamol"),
+        duration_hours=int(data.get("duration_hours", 24)),
+    )
+
+
 # ── Virtual Cohort ────────────────────────────────────────────
 
 @router.post("/virtual-cohort")
@@ -362,9 +483,40 @@ async def delete(patient_id: str):
     return {"status": "deleted", "patient_id": patient_id}
 
 
-@router.get("/engines")
-async def list_engines():
-    return {"active_engines": list(_engines.keys()), "count": len(_engines)}
+# ── TRIPOD+AI Identifiability & Baseline Benchmarking ──────────
+
+@router.get("/identifiability/audit")
+async def identifiability_audit():
+    """
+    Computes Fisher Information Matrix conditioning and parameter recovery
+    diagnostics comparing the 4-parameter identifiable subset vs overparameterized model.
+    """
+    from app.personalization.identifiability import IdentifiabilityAnalyzer
+    analyzer = IdentifiabilityAnalyzer()
+    rep4 = analyzer.analyze_subset(use_restricted_subset=True)
+    rep_full = analyzer.analyze_subset(use_restricted_subset=False)
+    from dataclasses import asdict
+    return {
+        "status": "success",
+        "protocol": "TRIPOD+AI Practical Identifiability",
+        "restricted_4_param": asdict(rep4),
+        "overparameterized_augmented": asdict(rep_full),
+    }
+
+
+@router.get("/baselines/benchmark")
+async def baselines_benchmark(days: int = 14):
+    """
+    Benchmarks Digital Twin against Naive Persistence and Autoregressive (AR3) models
+    at 30-min and 60-min horizons for hypoglycemia risk and lead time.
+    """
+    from app.personalization.benchmark_baselines import (
+        BaselineBenchmarkRunner,
+        generate_outpatient_cgm_trace,
+    )
+    trace = generate_outpatient_cgm_trace(n_days=max(3, min(days, 30)))
+    runner = BaselineBenchmarkRunner(trace)
+    return runner.run_full_suite()
 
 
 @router.get("/health")

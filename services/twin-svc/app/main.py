@@ -167,3 +167,28 @@ app.include_router(uq_router)
 # ── XAI (Phase 16) ──
 from app.xai import router as xai_router
 app.include_router(xai_router)
+
+
+# ── Alias Endpoints — resolve 404s for un-prefixed routes ──
+
+@app.get("/mimic/summary")
+async def get_mimic_summary_alias():
+    """Alias for /phase17/mimic/summary."""
+    try:
+        from app.mimic import get_mimic_connector
+        connector = get_mimic_connector()
+        return await connector.get_mimic_summary_stats()
+    except Exception as e:
+        return {"status": "unavailable", "message": str(e)}
+
+
+@app.get("/personalization/validation/summary")
+async def get_validation_summary_alias():
+    """Alias for /personalization/v4/validation/results."""
+    try:
+        from app.personalization.phase5.validation_framework import ValidationFrameworkV2
+        vf = ValidationFrameworkV2()
+        vf.run_all()
+        return vf.get_report()
+    except Exception as e:
+        return {"status": "unavailable", "message": str(e)}

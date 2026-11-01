@@ -227,6 +227,55 @@ async def ingest_samsung_health_data(data: Dict[str, Any], patient_id: str):
     }
 
 
+@router.post("/samsung-health/sync-to-twin")
+async def sync_samsung_health_to_twin(data: Dict[str, Any], patient_id: str):
+    """Sync Samsung Health watch data directly into the initialized Personal Digital Twin."""
+    integration = get_samsung_health_integration()
+    health_data = integration.parse_samsung_health_export(data)
+    
+    from app.personalization.router import _engines
+    eng = _engines.get(patient_id)
+    if eng is None:
+        raise HTTPException(status_code=404, detail=f"Digital Twin for patient '{patient_id}' not initialized. Call /personalization/v2/seed-real-twin first.")
+
+    latest_values = {}
+    for hp in health_data:
+        latest_values[hp.data_type] = hp.value
+
+    # Perform UKF state update with synced metrics
+    if "heart_rate" in latest_values or "systolic_bp" in latest_values:
+        obs = np.array([
+            latest_values.get("glucose", 95.0),
+            latest_values.get("systolic_bp", 120.0),
+            latest_values.get("diastolic_bp", 80.0),
+            latest_values.get("heart_rate", 70.0),
+            latest_values.get("hrv", 45.0),
+            latest_values.get("gfr", 100.0),
+            140.0, 4.2, 290.0,
+            latest_values.get("ffa", 0.5),
+            latest_values.get("ldl", 100.0),
+            latest_values.get("hdl", 50.0),
+            latest_values.get("tg", 120.0),
+            latest_values.get("cortisol", 350.0),
+            latest_values.get("sleep_pressure", 0.3)
+        ])
+        eng.update(obs)
+
+    twin_state = eng.get_twin_state()
+    return {
+        "status": "synced",
+        "patient_id": patient_id,
+        "synced_metrics_count": len(latest_values),
+        "synced_metrics": latest_values,
+        "updated_twin_summary": {
+            "resting_hr": float(twin_state[7]),
+            "systolic_bp": float(twin_state[5]),
+            "muscle_mass_kg": float(twin_state[30]) if len(twin_state) > 30 else 30.0,
+            "bmd_g_cm2": float(twin_state[33]) if len(twin_state) > 33 else 1.2,
+        }
+    }
+
+
 @router.get("/daily-checkin/{patient_id}")
 async def get_daily_checkin(
     patient_id: str = Path(..., description="Patient ID"),

@@ -1,5 +1,6 @@
 """Wet-Lab narrative generators."""
-from typing import Dict, Any
+from __future__ import annotations
+from typing import Dict, Any, Optional
 from ._utils import risk_from_severity
 
 

@@ -307,6 +307,12 @@ class UnscentedKalmanFilter(StateEstimator):
             (27, 0, 2),      # M1_M2_ratio
             (28, 0, 1),      # NFkB_activity
             (29, 0, 100),    # InflammatoryLoad
+            (30, 5, 90),     # muscle_mass
+            (31, 0, 200),    # muscle_strength_index
+            (32, 0, 5),      # hypertrophy_signal
+            (33, 0.3, 3.0),  # bone_mineral_density
+            (34, 0.01, 10.0),# osteoblast_activity
+            (35, 0.01, 10.0),# osteoclast_activity
         ]
         for idx, lo, hi in state_clamps:
             if idx < PHYSIO_DIM:
@@ -650,6 +656,66 @@ class PersonalizationEngine:
 
     def get_immune_state(self) -> np.ndarray:
         return self.filter.get_physio_state()[_IMMUNE_OFF:_IMMUNE_OFF+IMMUNE_DIM]
+
+    def get_musculoskeletal_state(self) -> np.ndarray:
+        from .state import _MUSC_OFF, MUSCULOSKELETAL_DIM
+        return self.filter.get_physio_state()[_MUSC_OFF:_MUSC_OFF+MUSCULOSKELETAL_DIM]
+
+    def seed_from_personal_metrics(
+        self,
+        height_cm: float = 175.0,
+        weight_kg: float = 70.0,
+        resting_hr: float = 70.0,
+        resting_sbp: float = 120.0,
+        resting_dbp: float = 80.0,
+        body_fat_pct: float = 18.0,
+        skeletal_muscle_mass_kg: Optional[float] = None,
+        bone_mineral_density_g_cm2: Optional[float] = None,
+        vo2_max: Optional[float] = 42.0,
+        fasting_glucose: float = 92.0,
+        crp: float = 1.0,
+        serum_creatinine: float = 0.9,
+    ) -> np.ndarray:
+        """Seed twin state vector directly from real user physical metrics."""
+        height_m = height_cm / 100.0
+        bmi = weight_kg / (height_m ** 2)
+        fat_mass = weight_kg * (body_fat_pct / 100.0)
+        ffm = weight_kg - fat_mass
+
+        if skeletal_muscle_mass_kg is None:
+            skeletal_muscle_mass_kg = ffm * 0.55
+        if bone_mineral_density_g_cm2 is None:
+            bone_mineral_density_g_cm2 = 1.20
+
+        age = getattr(self, 'age', 35.0)
+        sex = getattr(self, 'sex', 'male')
+        gfr = ((140.0 - age) * weight_kg) / (72.0 * max(serum_creatinine, 0.4))
+        if sex == 'female':
+            gfr *= 0.85
+
+        mu = self.filter.get_state()
+        mu[0] = float(fasting_glucose)
+        mu[1] = 0.013 * max(0.0, float(fasting_glucose) - 80.0)
+        mu[5] = float(resting_sbp)
+        mu[6] = float(resting_dbp)
+        mu[7] = float(resting_hr)
+        mu[8] = float(vo2_max * 1.1) if vo2_max else 45.0
+        mu[9] = float(np.clip(gfr, 15.0, 160.0))
+        mu[13] = float(crp)
+        mu[20] = float(fat_mass)
+
+        # Musculoskeletal seeding
+        if len(mu) > 30:
+            mu[30] = float(skeletal_muscle_mass_kg)
+            mu[31] = float(np.clip((skeletal_muscle_mass_kg / (weight_kg * 0.45)) * 50.0, 10.0, 100.0))
+            mu[32] = 0.1
+            mu[33] = float(bone_mineral_density_g_cm2)
+            mu[34] = 1.0
+            mu[35] = 1.0
+
+        self.filter._mu = mu
+        self.is_initialized = True
+        return mu[:PHYSIO_DIM]
 
     def get_insulin_resistance_state(self) -> float:
         p, _ = self.get_parameters()

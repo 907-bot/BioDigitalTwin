@@ -1,5 +1,6 @@
 """DDI narrative generators."""
-from typing import List, Dict, Any
+from __future__ import annotations
+from typing import List, Dict, Any, Optional
 from ._utils import risk_from_severity
 
 

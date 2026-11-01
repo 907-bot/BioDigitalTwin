@@ -235,7 +235,6 @@ class SamsungHealthIntegration:
             # Blood pressure data
             if "blood_pressure" in json_data:
                 for record in json_data["blood_pressure"]:
-                    # Create separate entries for systolic and diastolic
                     systolic = SamsungHealthData(
                         data_type="systolic_bp",
                         value=float(record.get("systolic", record.get("systolic_bp", 0))),
@@ -255,10 +254,31 @@ class SamsungHealthIntegration:
                         metadata={"source": "samsung_health_export"}
                     )
                     health_data.extend([systolic, diastolic])
-            
+
+            # Body composition data (Galaxy Watch 4 BIA sensor / Smart Scale)
+            if "body_composition" in json_data:
+                for record in json_data["body_composition"]:
+                    ts = datetime.fromisoformat(record.get("date_time", record.get("timestamp", datetime.now().isoformat())))
+                    dev = record.get("device_id", "samsung_watch_bia")
+                    if "body_fat_pct" in record:
+                        health_data.append(SamsungHealthData(
+                            data_type="body_fat_pct", value=float(record["body_fat_pct"]), unit="%",
+                            timestamp=ts, device_id=dev, device_model="Galaxy Watch BIA", metadata={"source": "samsung_health"}
+                        ))
+                    if "skeletal_muscle_mass_kg" in record:
+                        health_data.append(SamsungHealthData(
+                            data_type="skeletal_muscle_mass", value=float(record["skeletal_muscle_mass_kg"]), unit="kg",
+                            timestamp=ts, device_id=dev, device_model="Galaxy Watch BIA", metadata={"source": "samsung_health"}
+                        ))
+                    if "bone_mass_kg" in record:
+                        health_data.append(SamsungHealthData(
+                            data_type="bone_mass", value=float(record["bone_mass_kg"]), unit="kg",
+                            timestamp=ts, device_id=dev, device_model="Galaxy Watch BIA", metadata={"source": "samsung_health"}
+                        ))
+
             logger.info(f"Parsed {len(health_data)} Samsung Health data points")
             return health_data
-            
+
         except Exception as e:
             logger.error(f"Error parsing Samsung Health export: {e}")
             return []

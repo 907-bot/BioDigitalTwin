@@ -61,6 +61,28 @@ The Next.js frontend mirrors the phases as pages (`/cohort`, `/simulate`, `/caus
 
 ---
 
+## 🔬 Scientific Foundation & Publication Framework
+
+> **Primary Falsifiable Research Question**:  
+> *"Does estimating a small, demonstrably identifiable set of patient-specific parameters improve short-horizon glucose-risk prediction over simpler baselines in a defined population?"*
+
+### Auditable Pre-Clinical Boundaries
+- **Parameter Identifiability**: Structural and practical identifiability diagnostics (`backend/app/personalization/identifiability.py`) prove that estimating 29 physiological parameters from sparse glucose readings causes severe rank deficiency (condition number $> 10^{16}$). The twin restricts active UKF estimation to 4 demonstrably identifiable parameters ($S_I, V_d, k_{abs}, \text{EGP}_0$), achieving rank 4/4 and $<2\%$ parameter recovery error.
+- **Baseline Benchmarking**: Short-horizon (30-min and 60-min) hypoglycemia risk ($G < 70\text{ mg/dL}$) predictions are benchmarked against naive persistence ($G_{t+\Delta t} = G_t$) and autoregressive (AR3) models (`backend/app/personalization/benchmark_baselines.py`), measuring event sensitivity, false alerts per patient-day, and lead time.
+- **Dataset Boundary**: MIMIC-IV provides inpatient/ICU and emergency-department validation. Outpatient CGM forecasting is evaluated on independent continuous ambulatory monitoring traces.
+- **Hypothesis Separation**: Counterfactual treatment recommendations and long-term complication reduction claims are separated into subsequent prospective interventional studies.
+
+### Auditable Benchmarking Commands
+```bash
+# 1. Run Structural & Practical Identifiability Audit
+backend/.venv/bin/python backend/app/personalization/identifiability.py
+
+# 2. Run Short-Horizon Baseline Benchmarks (Persistence vs AR3 vs Twin)
+backend/.venv/bin/python backend/app/personalization/benchmark_baselines.py
+```
+
+---
+
 ## Core concepts
 
 - **Narrative layer** – Cross‑cutting `backend/app/narrative/*` modules turn raw numbers into plain‑English and scientist‑level explanations with a risk badge. The frontend `Narrative` component lets you toggle between the two views.

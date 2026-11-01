@@ -3,11 +3,11 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Optional
+from typing import Optional, Any
 
 import numpy as np
 import pandas as pd
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Body
 from pydantic import BaseModel
 
 from .compartments import (
@@ -344,3 +344,19 @@ def population_sim(req: PopRequest):
         },
         **summary,
     }
+
+
+# ── OTC Cold vs Fever Mismatch Simulation ──────────────────────
+
+@router.post("/otc-simulation")
+def otc_simulation(req: Any = Body(...)):
+    """Simulate OTC drug response and mismatch risk profiles (Paracetamol, Ibuprofen, Pseudoephedrine, Diphenhydramine)."""
+    from .otc_simulator import OTCSimulationRequest, simulate_otc_mismatch
+    data = req if isinstance(req, dict) else req.model_dump()
+    return simulate_otc_mismatch(
+        patient_condition=data.get("patient_condition", "viral_cold_no_fever"),
+        administered_drug=data.get("administered_drug", "paracetamol"),
+        dose_mg=float(data.get("dose_mg", 500.0)),
+        repeat_doses_per_day=int(data.get("repeat_doses_per_day", 3)),
+        duration_days=int(data.get("duration_days", 3)),
+    )

@@ -1,0 +1,79 @@
+{
+  "evaluation_protocol": "TRIPOD+AI Short-Horizon Outpatient Glycemic Risk",
+  "cgm_dataset_simulated_days": 14.0,
+  "sampling_rate_minutes": 5,
+  "benchmark_results": [
+    {
+      "model_name": "Persistence",
+      "horizon_minutes": 30,
+      "rmse_mg_dl": 11.4,
+      "mae_mg_dl": 8.25,
+      "hypoglycemia_sensitivity": 0.5,
+      "false_alerts_per_day": 2.86,
+      "mean_lead_time_minutes": 6.0,
+      "pi_80_coverage": 0.869,
+      "pi_95_coverage": 0.954,
+      "expected_calibration_error_ece": 0.036
+    },
+    {
+      "model_name": "Autoregressive_AR3",
+      "horizon_minutes": 30,
+      "rmse_mg_dl": 15.35,
+      "mae_mg_dl": 12.01,
+      "hypoglycemia_sensitivity": 0.781,
+      "false_alerts_per_day": 7.0,
+      "mean_lead_time_minutes": 16.5,
+      "pi_80_coverage": 0.597,
+      "pi_95_coverage": 0.785,
+      "expected_calibration_error_ece": 0.184
+    },
+    {
+      "model_name": "DigitalTwin_Identifiable4",
+      "horizon_minutes": 30,
+      "rmse_mg_dl": 16.7,
+      "mae_mg_dl": 13.13,
+      "hypoglycemia_sensitivity": 0.781,
+      "false_alerts_per_day": 10.29,
+      "mean_lead_time_minutes": 25.5,
+      "pi_80_coverage": 0.428,
+      "pi_95_coverage": 0.601,
+      "expected_calibration_error_ece": 0.36
+    },
+    {
+      "model_name": "Persistence",
+      "horizon_minutes": 60,
+      "rmse_mg_dl": 16.68,
+      "mae_mg_dl": 11.82,
+      "hypoglycemia_sensitivity": 0.125,
+      "false_alerts_per_day": 4.57,
+      "mean_lead_time_minutes": 12.0,
+      "pi_80_coverage": 0.862,
+      "pi_95_coverage": 0.954,
+      "expected_calibration_error_ece": 0.033
+    },
+    {
+      "model_name": "Autoregressive_AR3",
+      "horizon_minutes": 60,
+      "rmse_mg_dl": 28.65,
+      "mae_mg_dl": 22.04,
+      "hypoglycemia_sensitivity": 0.438,
+      "false_alerts_per_day": 25.71,
+      "mean_lead_time_minutes": 33.0,
+      "pi_80_coverage": 0.493,
+      "pi_95_coverage": 0.677,
+      "expected_calibration_error_ece": 0.29
+    },
+    {
+      "model_name": "DigitalTwin_Identifiable4",
+      "horizon_minutes": 60,
+      "rmse_mg_dl": 21.98,
+      "mae_mg_dl": 16.84,
+      "hypoglycemia_sensitivity": 0.266,
+      "false_alerts_per_day": 13.93,
+      "mean_lead_time_minutes": 51.0,
+      "pi_80_coverage": 0.469,
+      "pi_95_coverage": 0.661,
+      "expected_calibration_error_ece": 0.31
+    }
+  ]
+}

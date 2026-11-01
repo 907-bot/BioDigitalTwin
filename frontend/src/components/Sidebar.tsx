@@ -31,6 +31,8 @@ export const MODULES: Module[] = [
   { n: 14, title: "Wet-Lab",             blurb: "PAINS · SAS · IC50 · tox",      href: "/wetlab",           group: "advancements", icon: "⎔" },
   { n: 15, title: "Disease Registry",    blurb: "Postgres-backed CRUD catalog",  href: "/registry",         group: "advancements", icon: "▤" },
   { n: 16, title: "Explainable AI",      blurb: "SHAP-lite + reasoning chains",  href: "/explain",          group: "advancements", icon: "◬" },
+  { n: 17, title: "Personal Twin Studio",blurb: "Real metrics · Workouts · OTC · Cell", href: "/personal-twin", group: "advancements", icon: "🧬" },
+  { n: 18, title: "Real-World Twin",   blurb: "Samsung Health CSVs · ML Models · HITL", href: "/samsung-twin", group: "advancements", icon: "⌚" },
 ];
 
 export function Sidebar({

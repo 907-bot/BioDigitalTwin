@@ -35,12 +35,12 @@ from typing import Dict, Any
 from .state import (
     Phase3TwinState,
     MetabolicState, CardioState, RenalState, InflammatoryState,
-    CircadianState, AdiposeLipidState, ImmuneInflamState,
+    CircadianState, AdiposeLipidState, ImmuneInflamState, MusculoskeletalState,
     METABOLIC_DIM, CARDIO_DIM, RENAL_DIM, INFLAMMATION_DIM,
-    CIRCADIAN_DIM, ADIPOSE_DIM, IMMUNE_DIM,
+    CIRCADIAN_DIM, ADIPOSE_DIM, IMMUNE_DIM, MUSCULOSKELETAL_DIM,
     PHYSIO_DIM,
     _META_OFF, _CARDIO_OFF, _RENAL_OFF, _INFL_OFF,
-    _CIRC_OFF, _ADIP_OFF, _IMMUNE_OFF,
+    _CIRC_OFF, _ADIP_OFF, _IMMUNE_OFF, _MUSC_OFF,
 )
 
 # ── Physical constants ──────────────────────────────────────
@@ -590,8 +590,67 @@ def full_dynamics(
         ft.inflammation, new_meta.IR, new_cardio.HRV, new_immune.IL6_proxy, dt,
     )
 
+    # 8. Musculoskeletal — needs cortisol, IL6
+    new_musc = compute_musculoskeletal_dynamics(
+        ft.musculoskeletal, inputs, p, new_circ.cortisol, new_immune.IL6_proxy, dt
+    )
+
     return Phase3TwinState(new_meta, new_cardio, new_renal, new_infl,
-                           new_circ, new_adip, new_immune).to_array()
+                           new_circ, new_adip, new_immune, new_musc).to_array()
+
+
+def compute_musculoskeletal_dynamics(
+    musc: MusculoskeletalState,
+    inputs: Dict[str, float],
+    params: Dict[str, float],
+    cortisol: float,
+    il6: float,
+    dt: float = 1.0,
+) -> MusculoskeletalState:
+    mtor_rate = params.get("mTOR_activation_rate", 0.2)
+    mps_eff = params.get("protein_synthesis_efficiency", 0.8)
+    bone_rate = params.get("bone_remodeling_rate", 0.01)
+    strain_sens = params.get("mechanical_strain_sensitivity", 1.2)
+
+    exercise = inputs.get("exercise", 0.0)
+    protein_intake = inputs.get("protein_intake", 1.0)
+
+    # mTOR / hypertrophy signal dynamics
+    d_mTOR = (mtor_rate * exercise * protein_intake - 0.05 * musc.hypertrophy_signal) * (dt / 60.0)
+    new_hypertrophy = _clamp(musc.hypertrophy_signal + d_mTOR, 0.0, 5.0)
+
+    # Muscle mass kinetics (kg): MPS - MPB
+    mps = mps_eff * new_hypertrophy
+    mpb = 0.001 * (cortisol / 300.0) + 0.0005 * il6
+    d_muscle = (mps - mpb) * (dt / 1440.0)
+    new_muscle_mass = _clamp(musc.muscle_mass + d_muscle, 5.0, 90.0)
+
+    # Muscle strength index: function of muscle mass and training load
+    target_strength = (new_muscle_mass / 30.0) * 50.0 * (1.0 + 0.5 * exercise)
+    d_strength = 0.01 * (target_strength - musc.muscle_strength_index) * (dt / 60.0)
+    new_strength = _clamp(musc.muscle_strength_index + d_strength, 0.0, 200.0)
+
+    # Osteoblast activity: mechanical strain from exercise
+    mechanical_strain = exercise * strain_sens
+    target_osteo_b = 1.0 + mechanical_strain * 0.8
+    new_osteo_b = _clamp(musc.osteoblast_activity + 0.05 * (target_osteo_b - musc.osteoblast_activity) * (dt / 60.0), 0.1, 5.0)
+
+    # Osteoclast activity: cortisol & IL6, suppressed by exercise strain
+    target_osteo_c = 1.0 + 0.2 * (cortisol / 300.0) + 0.1 * il6 - 0.3 * exercise
+    new_osteo_c = _clamp(musc.osteoclast_activity + 0.05 * (target_osteo_c - musc.osteoclast_activity) * (dt / 60.0), 0.1, 5.0)
+
+    # Bone Mineral Density (g/cm^2): osteoblast (formation) - osteoclast (resorption)
+    d_bmd = bone_rate * (new_osteo_b - new_osteo_c) * (dt / 1440.0)
+    new_bmd = _clamp(musc.bone_mineral_density + d_bmd, 0.3, 3.0)
+
+    return MusculoskeletalState(
+        muscle_mass=new_muscle_mass,
+        muscle_strength_index=new_strength,
+        hypertrophy_signal=new_hypertrophy,
+        bone_mineral_density=new_bmd,
+        osteoblast_activity=new_osteo_b,
+        osteoclast_activity=new_osteo_c,
+    )
 
 
 # ===================================================================
@@ -658,6 +717,7 @@ DEFAULT_PARAMS = np.array([
     1440.0, 0.8, 0.3, 0.5,        # circadian (12-15)
     0.1, 0.05, 0.03, 0.02, 0.1,   # adipose (16-20)
     0.5, 0.5, 0.3, 0.5,           # immune (21-24)
+    0.2, 0.8, 0.01, 1.2,          # musculoskeletal (25-28)
 ], dtype=np.float64)
 
 
@@ -694,4 +754,9 @@ def _params_to_dict(p: np.ndarray) -> Dict[str, float]:
         "NFkB_sensitivity": float(p[22]),
         "vagal_tone_effect": float(p[23]),
         "IL6_clearance": float(p[24]),
+        # Musculoskeletal (25-28)
+        "mTOR_activation_rate": float(p[25]) if len(p) > 25 else 0.2,
+        "protein_synthesis_efficiency": float(p[26]) if len(p) > 26 else 0.8,
+        "bone_remodeling_rate": float(p[27]) if len(p) > 27 else 0.01,
+        "mechanical_strain_sensitivity": float(p[28]) if len(p) > 28 else 1.2,
     }

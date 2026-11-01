@@ -58,15 +58,18 @@ export function Stat({
   label,
   value,
   sub,
+  hint,
   accent,
   unit,
 }: {
   label: string;
   value: React.ReactNode;
   sub?: string;
+  hint?: string;
   accent?: string;
   unit?: string;
 }) {
+  const subText = sub || hint;
   return (
     <div className="space-y-1">
       <div className="label">{label}</div>
@@ -77,7 +80,7 @@ export function Stat({
         {value}
         {unit && <span className="text-sm font-normal text-[#4d6580] ml-1">{unit}</span>}
       </div>
-      {sub && <div className="text-[11px] text-[#4d6580] leading-tight">{sub}</div>}
+      {subText && <div className="text-[11px] text-[#4d6580] leading-tight">{subText}</div>}
     </div>
   );
 }

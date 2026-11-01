@@ -22,7 +22,6 @@ const nextConfig = {
       { source: "/api/phase13/:path*",   destination: `${knowledge}/phase13/:path*` },
       { source: "/api/phase14/:path*",   destination: `${knowledge}/phase14/:path*` },
       { source: "/api/phase15/:path*",   destination: `${knowledge}/phase15/:path*` },
-      { source: "/api/phase16/:path*",   destination: `${knowledge}/phase16/:path*` },
 
       // Patient service (phases 1, 2, 4)
       { source: "/api/generate-patients", destination: `${patient}/patients/generate` },

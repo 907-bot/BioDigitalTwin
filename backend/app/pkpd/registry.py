@@ -315,6 +315,40 @@ DRUG_REGISTRY: dict[str, DrugRecord] = {
         target_biomarker="hr", effect_direction="decrease",
         drug_class="5ht3_antagonist", typical_dose_mg=4, typical_interval_h=8,
         notes="QT prolongation risk. CYP3A4 substrate."),
+
+    # ===== OTC Cold / Fever / Analgesics (Phase 17 Extension) =====
+    "paracetamol": DrugRecord(
+        name="paracetamol",
+        pk=PKParams(ka=2.5, CL=21.0, Vc=60.0, Vp=30.0, Q=8.0, F=0.88, omega_CL=0.20),
+        pd=PDParams(model=PDModel.EMAX, E0=38.5, Emax=-1.8, EC50=15.0, gamma=1.2,
+                    target_unit="Celsius"),
+        target_biomarker="body_temperature", effect_direction="decrease",
+        drug_class="otc_antipyretic", typical_dose_mg=500, typical_interval_h=6,
+        notes="Acetaminophen. Central COX-3 mechanism, antipyretic/analgesic. CYP2E1 reactive metabolite NAPQI at high dose."),
+    "ibuprofen": DrugRecord(
+        name="ibuprofen",
+        pk=PKParams(ka=3.0, CL=4.5, Vc=10.0, Vp=5.0, Q=2.0, F=0.90, omega_CL=0.25),
+        pd=PDParams(model=PDModel.EMAX, E0=38.5, Emax=-2.0, EC50=10.0, gamma=1.5,
+                    target_unit="Celsius"),
+        target_biomarker="body_temperature", effect_direction="decrease",
+        drug_class="nsaid", typical_dose_mg=400, typical_interval_h=8,
+        notes="Non-selective COX-1/COX-2 inhibitor. Inhibits PGE2 to reset hypothalamic fever set-point. Reduces renal PGE2, raising SBP."),
+    "pseudoephedrine": DrugRecord(
+        name="pseudoephedrine",
+        pk=PKParams(ka=2.0, CL=28.0, Vc=150.0, Vp=80.0, Q=12.0, F=0.95, omega_CL=0.20),
+        pd=PDParams(model=PDModel.EMAX, E0=120, Emax=15, EC50=0.5, gamma=1.0,
+                    target_unit="mmHg"),
+        target_biomarker="systolic_bp", effect_direction="increase",
+        drug_class="decongestant", typical_dose_mg=60, typical_interval_h=6,
+        notes="Alpha-1 / beta-1 adrenergic agonist. Decongests nasal mucosa via vasoconstriction. Side effect: raises SBP (+10-15 mmHg) & HR."),
+    "diphenhydramine": DrugRecord(
+        name="diphenhydramine",
+        pk=PKParams(ka=1.8, CL=50.0, Vc=250.0, Vp=150.0, Q=20.0, F=0.60, omega_CL=0.30),
+        pd=PDParams(model=PDModel.EMAX, E0=80, Emax=-20, EC50=0.1, gamma=1.0,
+                    target_unit="bpm"),
+        target_biomarker="hr", effect_direction="decrease",
+        drug_class="antihistamine", typical_dose_mg=25, typical_interval_h=6,
+        notes="1st generation H1 receptor antagonist. Central sedative and anticholinergic effects."),
 }
 
 

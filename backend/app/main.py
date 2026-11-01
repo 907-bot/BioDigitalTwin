@@ -173,7 +173,7 @@ def get_simulator():
 def root():
     return {
         "message": "Bio-Digital Twin API",
-        "version": "0.3.0",
+        "version": "0.4.0",
         "phases": {
             "phase_1": "POST /generate-patients",
             "phase_2": {
@@ -258,12 +258,24 @@ def root():
                 "registry_delete": "DELETE /phase15/registry/diseases/{key}",
                 "registry_summary": "GET /phase15/registry/summary",
             },
+            "phase_18": {
+                "health": "GET /phase18/health",
+                "ingest": "POST /phase18/ingest",
+                "patient_record": "GET /phase18/patient-record",
+                "features": "GET /phase18/features",
+                "train": "POST /phase18/train",
+                "training_status": "GET /phase18/training-status",
+                "predict": "POST /phase18/predict",
+                "health_timeline": "GET /phase18/health-timeline",
+                "fuse_with_cohort": "POST /phase18/fuse-with-cohort",
+                "training_metrics": "GET /phase18/training-metrics",
+            },
         },
     }
 
 @app.get("/health")
 def health():
-    return {"status": "healthy", "phase": "1+2+3+4+5+8+9+10+11+12+13+14+15+16"}
+    return {"status": "healthy", "phase": "1+2+3+4+5+8+9+10+11+12+13+14+15+16+18"}
 
 @app.post("/generate-patients")
 def generate_patients(n: int = Query(500, ge=10, le=5000)):
@@ -394,14 +406,59 @@ def get_patient_embedding(patient_id: str = Path(..., description="Patient ID (f
     patient_id = validate_patient_id(patient_id)
     try:
         from .graph.trainer import get_embedding
+        from .qdrant_store import get_qdrant_store
         embedding = get_embedding(patient_id)
+        # Upsert embedding into Qdrant vector database
+        qstore = get_qdrant_store()
+        qstore.upsert_patient_embedding(patient_id, embedding, {"patient_id": patient_id, "source": "gnn"})
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except KeyError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except ImportError as e:
         raise HTTPException(status_code=503, detail=f"GNN deps not installed: {e}")
-    return {"patient_id": patient_id, "embedding_dim": len(embedding), "embedding": embedding}
+    return {"patient_id": patient_id, "embedding_dim": len(embedding), "embedding": embedding, "qdrant_indexed": True}
+
+# =============================================================================
+# Qdrant Vector Database Endpoints (Patient Embedding & Vector Search)
+# =============================================================================
+@app.get("/qdrant/stats")
+def qdrant_stats():
+    """Get Qdrant vector database storage stats."""
+    from .qdrant_store import get_qdrant_store
+    return get_qdrant_store().get_stats()
+
+@app.post("/qdrant/upsert-embeddings")
+def qdrant_upsert_all():
+    """Index all patient GNN embeddings into Qdrant vector database."""
+    from .graph.trainer import load_embeddings
+    from .qdrant_store import get_qdrant_store
+    try:
+        embeddings, id_index = load_embeddings()
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    qstore = get_qdrant_store()
+    count = 0
+    for pid, idx in id_index.items():
+        vec = embeddings[idx].tolist()
+        qstore.upsert_patient_embedding(pid, vec, {"patient_id": pid, "source": "gnn"})
+        count += 1
+    return {"status": "success", "indexed_patients": count, "qdrant_stats": qstore.get_stats()}
+
+@app.get("/qdrant/similar-patients/{patient_id}")
+def qdrant_similar_patients(patient_id: str, k: int = Query(5, ge=1, le=50)):
+    """Find similar patients using Qdrant vector similarity search."""
+    from .graph.trainer import get_embedding
+    from .qdrant_store import get_qdrant_store
+    try:
+        emb = get_embedding(patient_id)
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    qstore = get_qdrant_store()
+    results = qstore.search_similar_patients(emb, limit=k+1)
+    # Exclude self if present
+    filtered = [r for r in results if r["id"] != patient_id][:k]
+    return {"patient_id": patient_id, "vector_search_engine": "Qdrant", "k": len(filtered), "similar_patients": filtered}
 
 @app.get("/phase2/graph-stats")
 def graph_stats():
@@ -933,3 +990,35 @@ from app.phase17 import router as phase17_router  # noqa: E402
 app.include_router(phase17_router)
 
 
+# =============================================================================
+# Phase 18 — Samsung Health Data Integration + ML Training + Real-World Twin
+# =============================================================================
+from app.samsung import samsung_router  # noqa: E402
+app.include_router(samsung_router)
+
+
+# =============================================================================
+# Alias Endpoints — resolve 404s for un-prefixed routes
+# =============================================================================
+
+@app.get("/mimic/summary")
+async def get_mimic_summary_alias():
+    """Alias for /phase17/mimic/summary — allows clients that omit the /phase17 prefix."""
+    try:
+        from app.mimic import get_mimic_connector
+        connector = get_mimic_connector()
+        return await connector.get_mimic_summary_stats()
+    except Exception as e:
+        return {"status": "unavailable", "message": str(e)}
+
+
+@app.get("/personalization/validation/summary")
+async def get_validation_summary_alias():
+    """Alias for /personalization/v4/validation/results — allows clients that omit the /v4 prefix."""
+    try:
+        from app.personalization.phase5.validation_framework import ValidationFrameworkV2
+        vf = ValidationFrameworkV2()
+        vf.run_all()
+        return vf.get_report()
+    except Exception as e:
+        return {"status": "unavailable", "message": str(e)}

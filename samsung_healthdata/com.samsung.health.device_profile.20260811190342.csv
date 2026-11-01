@@ -1,0 +1,11 @@
+﻿com.samsung.health.device_profile,7006003,9
+manufacturer,providing_step_goal,create_sh_ver,step_source_group,device_type,backsync_step_goal,capability,modify_sh_ver,device_group,update_time,create_time,name,model,legacy_deviceuuid,connectivity_type,deviceuuid,pkg_name,accessory_type,fixed_name,datauuid
+vivo,,,,,,,,360001,2025-06-27 10:12:08.371,2025-01-10 17:23:50.833,My Device,V2246,,,kMCaXFalhb,com.sec.android.app.shealth,,vivo V27,e06d6c42-968f-228c-e937-86bcdf541b79,
+Combined,,,,,,,,0,2025-01-10 17:24:09.711,2025-01-10 17:24:09.711,Combined,Combined,,,VfS0qUERdZ,com.sec.android.app.shealth,,,7af9722c-cd99-07b7-853a-43ce58e819c5,
+all_target,,,,,,,,0,2025-01-10 17:24:10.145,2025-01-10 17:24:10.145,all_target,all_target,,,Mk66SbFqK1,com.sec.android.app.shealth,,,471ca32b-a665-1e9e-7c27-7ac69485dc05,
+Samsung Electronics,1,,103,10053,1,d318231a-bc79-4bb7-bfe9-19fa0bf709dc.capability.json,62920010,360003,2025-02-19 06:53:49.791,2025-01-10 17:11:01.133,Galaxy Watch4 Classic,SM-R895F,,,rZageKzeHC,com.sec.android.app.shealth,,,d318231a-bc79-4bb7-bfe9-19fa0bf709dc,
+Samsung Electronics,1,,103,10053,1,3b762c53-c028-4d83-b21c-9d2377dd71d5.capability.json,63030110,360003,2025-07-22 12:24:11.436,2025-02-19 11:23:33.964,Galaxy Watch4 Classic,SM-R895F,,,/PkKUxo9Mh,com.sec.android.app.shealth,,,3b762c53-c028-4d83-b21c-9d2377dd71d5,
+Samsung Electronics,1,,103,10053,1,1b4ff983-5812-4ff0-bdd8-9b5fd0c39d37.capability.json,63060070,360003,2025-11-25 15:29:40.731,2025-08-05 12:03:26.892,Galaxy Watch4 Classic,SM-R895F,,,3A9HRKU33M,com.sec.android.app.shealth,,,1b4ff983-5812-4ff0-bdd8-9b5fd0c39d37,
+Samsung Electronics,,,,,,,,360003,2025-09-27 10:42:30.102,2025-09-27 10:42:30.102,Strava,www.strava.com,,,p8M6gfCBJS,com.sec.android.app.shealth,,vivo V27,f6c6623b-fd34-e74c-dd02-e03174300658,
+Samsung Electronics,1,,103,10053,1,5acf59fa-6ba4-4752-a69a-63fec17a8c0d.capability.json,63070030,360003,2025-12-29 08:29:09.502,2025-12-29 06:40:16.052,Galaxy Watch4 Classic,SM-R895F,,,wwEbaPbn9w,com.sec.android.app.shealth,,,5acf59fa-6ba4-4752-a69a-63fec17a8c0d,
+Samsung Electronics,1,,103,10053,1,63de7863-8b39-47ff-8d66-6081f420bd23.capability.json,70060030,360003,2026-08-06 10:44:36.166,2025-12-31 02:36:55.564,Galaxy Watch4 Classic,SM-R895F,,,C9c4b6B6cX,com.sec.android.app.shealth,,,63de7863-8b39-47ff-8d66-6081f420bd23,

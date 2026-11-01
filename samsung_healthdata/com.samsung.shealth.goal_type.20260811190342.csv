@@ -1,0 +1,9 @@
+﻿com.samsung.shealth.goal_type,7006003,1
+movement_type,energy_type,update_time,create_time,duration_type,time_offset,deviceuuid,pkg_name,set_time,datauuid
+0,0,2025-01-10 17:36:18.917,2025-01-10 17:36:18.917,0,UTC+0530,rZageKzeHC,com.sec.android.app.shealth,1736530578911,4ccfc534-6d8b-40fa-8c3e-5f6e11d17563,
+0,1,2025-01-10 17:36:51.522,2025-01-10 17:36:51.522,0,UTC+0530,rZageKzeHC,com.sec.android.app.shealth,1736530611503,3c7316c8-75ca-4009-8245-675d1b1ab216,
+1,1,2026-01-28 02:51:48.236,2026-01-28 02:51:48.236,0,UTC+0530,kMCaXFalhb,com.sec.android.app.shealth,1769568708227,5e34c564-8e89-4d61-83fc-a88951eb3bf8,
+2,1,2026-01-28 02:51:55.699,2026-01-28 02:51:55.699,0,UTC+0530,kMCaXFalhb,com.sec.android.app.shealth,1769568715694,68bde4e2-99fd-4a8c-8fca-dd31982e266c,
+2,0,2026-01-28 02:52:10.407,2026-01-28 02:52:10.407,0,UTC+0530,kMCaXFalhb,com.sec.android.app.shealth,1769568730404,89dd86c7-d3cd-4247-b74f-31c7fa064fe9,
+2,1,2026-01-28 02:52:11.815,2026-01-28 02:52:11.815,0,UTC+0530,kMCaXFalhb,com.sec.android.app.shealth,1769568731813,3024e416-4ea8-4e90-9e27-33a001638577,
+0,1,2026-01-28 09:22:16.463,2026-01-28 09:22:16.463,0,UTC+0530,C9c4b6B6cX,com.sec.android.app.shealth,1769592136445,00552215-ee59-45a1-989f-30b3430a06ad,

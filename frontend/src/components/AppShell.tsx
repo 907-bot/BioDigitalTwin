@@ -18,6 +18,7 @@ const ADV_LINKS = [
   { href: "/trials",           label: "Trials"     },
   { href: "/regulatory",       label: "Regulatory" },
   { href: "/explain",          label: "XAI"        },
+  { href: "/samsung-twin",     label: "Real-World" },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {

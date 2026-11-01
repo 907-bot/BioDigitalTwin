@@ -1,0 +1,8 @@
+﻿com.samsung.shealth.exercise.photo,7006003,2
+start_time,latitude,custom,update_time,create_time,image,longitude,time_offset,deviceuuid,exercise_id,pkg_name,datauuid
+2025-09-20 10:38:57.476,17.745111,,2025-09-20 10:38:57.554,2025-09-20 10:38:57.554,96b1e2cc-d452-4ad2-b882-ea9967a054ae.image.jpg,83.34736,UTC+0530,kMCaXFalhb,bce0da88-a605-40bc-8e84-3f26e78169f0,com.sec.android.app.shealth,96b1e2cc-d452-4ad2-b882-ea9967a054ae,
+2025-11-04 14:14:31.549,17.755592,,2025-11-04 14:14:31.571,2025-11-04 14:14:31.571,51870563-af5c-4246-80f4-569c0a47648c.image.jpg,83.353226,UTC+0530,kMCaXFalhb,4915f8c7-ea88-40de-a72b-0e013d215ad8,com.sec.android.app.shealth,51870563-af5c-4246-80f4-569c0a47648c,
+2025-11-17 17:11:20.446,17.744007,,2025-11-17 17:11:20.530,2025-11-17 17:11:20.530,c03150dd-68d6-43dc-af17-dcc3ca4cc10f.image.jpg,83.32708,UTC+0530,kMCaXFalhb,1a17ad32-0b3d-4960-828d-48e1fe9a8169,com.sec.android.app.shealth,c03150dd-68d6-43dc-af17-dcc3ca4cc10f,
+2026-01-14 10:51:34.000,0.0,,2026-01-15 19:29:41.227,2026-01-15 19:29:41.227,a777d54a-d800-3346-1f0c-bc06a903498d.image.jpg,0.0,UTC+0530,p8M6gfCBJS,34deb0ea-6c4f-965c-500e-ed2b1bdf607b,com.sec.android.app.shealth,a777d54a-d800-3346-1f0c-bc06a903498d,
+2026-01-16 17:35:18.000,0.0,,2026-01-19 19:39:23.531,2026-01-19 19:39:23.531,99cd71eb-e354-2a32-d292-78aee3ed8b95.image.jpg,0.0,UTC+0530,p8M6gfCBJS,1a68eceb-4aa2-2601-082b-217393f79e6f,com.sec.android.app.shealth,99cd71eb-e354-2a32-d292-78aee3ed8b95,
+2026-01-31 17:47:10.665,17.714478,,2026-01-31 17:47:10.756,2026-01-31 17:47:10.756,2cefdd71-ec6d-4323-b278-022eca42012d.image.jpg,83.32359,UTC+0530,kMCaXFalhb,805c836c-7303-4ec9-94a9-b63a2a844bf9,com.sec.android.app.shealth,2cefdd71-ec6d-4323-b278-022eca42012d,

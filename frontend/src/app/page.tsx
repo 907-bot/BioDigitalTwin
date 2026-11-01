@@ -47,6 +47,7 @@ const ADV_PHASES = [
   { n: 14, t: "Wet-Lab",           href: "/wetlab",           blurb: "PAINS / Brenk / SAS / IC50 / toxicity on SMILES",    icon: "⎔", color: "#00bcd4" },
   { n: 15, t: "Disease Registry",  href: "/registry",         blurb: "Postgres-backed disease catalog with CRUD API",       icon: "▤", color: "#a78bfa" },
   { n: 16, t: "Explainable AI",    href: "/explain",          blurb: "SHAP-lite + reasoning chains across all phases",      icon: "◬", color: "#60a5fa" },
+  { n: 18, t: "Real-World Twin",   href: "/samsung-twin",     blurb: "Samsung Health CSVs → feature engineering → 4 ML models → HITL predictions", icon: "⌚", color: "#00bcd4" },
 ];
 
 /* ─── System metrics ─────────────────────────────────────── */

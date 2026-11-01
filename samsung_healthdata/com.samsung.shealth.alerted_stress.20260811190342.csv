@@ -1,0 +1,4 @@
+﻿com.samsung.shealth.alerted_stress,7006003,1
+create_sh_ver,start_time,modify_sh_ver,update_time,create_time,time_offset,deviceuuid,pkg_name,end_time,datauuid
+63100571,2026-03-10 06:23:27.799,63100571,2026-03-10 06:23:27.951,2026-03-10 06:23:27.951,UTC+0530,C9c4b6B6cX,com.sec.android.app.shealth,2026-03-10 06:23:27.799,d6c4445f-409a-49d3-a13b-8a6a606bc340,
+63200011,2026-07-14 09:09:29.090,63200011,2026-07-14 09:09:29.145,2026-07-14 09:09:29.145,UTC+0530,C9c4b6B6cX,com.sec.android.app.shealth,2026-07-14 09:09:29.090,9839b406-897d-41be-b8a2-ff4b660d7777,
