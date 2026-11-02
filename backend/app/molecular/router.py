@@ -35,6 +35,37 @@ class SpatialSimulationRequest(BaseModel):
     current_plasma_glucose_mg_dL: float = Field(120.0, ge=30.0, le=600.0)
     current_sbp_mmHg: float = Field(125.0, ge=50.0, le=250.0)
     current_hr_bpm: float = Field(72.0, ge=30.0, le=220.0)
+    patient_gfr_mL_min: float = Field(100.0, ge=10.0, le=200.0, description="Patient GFR in mL/min")
+
+
+@router.get("/drugs")
+def list_supported_drugs():
+    """
+    Returns all supported therapeutics in the validated drug-target interaction library.
+    """
+    from app.molecular.targets.drug_registry import get_drug_interaction_registry
+    reg = get_drug_interaction_registry()
+    drugs = [
+        {
+            "drug_name": item.drug_name,
+            "target_id": item.target_id,
+            "target_class": item.target_class,
+            "mechanism": item.mechanism,
+            "is_agonist": item.is_agonist,
+            "is_blocker": item.is_blocker,
+            "Kd_nM": item.Kd_nM,
+            "IC50_nM": item.IC50_nM,
+            "approved_indications": item.approved_indications,
+            "evidence": {
+                "pubmed_id": item.evidence.pubmed_id,
+                "chembl_id": item.evidence.chembl_id,
+                "source": item.evidence.source_database,
+                "confidence": item.evidence.confidence_score,
+            },
+        }
+        for item in reg._interactions.values()
+    ]
+    return {"count": len(drugs), "drugs": drugs}
 
 
 @router.get("/targets")
@@ -153,6 +184,7 @@ def run_spatial_simulation(req: SpatialSimulationRequest):
             current_plasma_glucose_mg_dL=req.current_plasma_glucose_mg_dL,
             current_sbp_mmHg=req.current_sbp_mmHg,
             current_hr_bpm=req.current_hr_bpm,
+            patient_gfr_mL_min=req.patient_gfr_mL_min,
         )
         return {
             "status": "success",

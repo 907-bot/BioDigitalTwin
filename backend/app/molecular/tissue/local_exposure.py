@@ -25,8 +25,10 @@ class LocalExposureProfile:
     plasma_free_nM: float
     tissue_total_mg_L: float
     interstitial_free_nM: float
+    luminal_free_nM: float
     intracellular_free_nM: float
     target_accessible_conc_nM: float
+    route_of_target_access: str
     partition_coefficient_Kp: float
     fu_plasma: float
 
@@ -34,6 +36,8 @@ class LocalExposureProfile:
 class LocalExposureCalculator:
     """
     Physiologically based computation of local drug exposure accessible to target molecules.
+    Accounts for cell polarity, apical luminal filtration vs basolateral interstitial fluid,
+    and intracellular active transport accumulation.
     """
     @staticmethod
     def calculate(
@@ -45,6 +49,7 @@ class LocalExposureCalculator:
         fu_plasma: float = 0.15,
         partition_coefficient_Kp: float = 1.0,
         intracellular_permeability_ratio: float = 0.85,
+        apical_luminal_concentration_factor: float = 1.4,
     ) -> LocalExposureProfile:
         mw = max(10.0, float(molecular_weight_g_mol))
         c_plasma_mg_L = max(0.0, float(plasma_total_mg_L))
@@ -52,8 +57,6 @@ class LocalExposureCalculator:
         kp = float(max(0.01, partition_coefficient_Kp))
 
         # 1. Plasma concentrations: mg/L -> nM
-        # (mg/L) / (g/mol) = mol / (1000 * L) = mmol/L = 10^6 nM
-        # 1 mg/L = (1e-3 g / L) / (MW g/mol) = (1e-3 / MW) mol/L = (1e6 / MW) nM
         plasma_total_nM = (c_plasma_mg_L * 1e6) / mw
         plasma_free_nM = plasma_total_nM * fu
 
@@ -61,19 +64,31 @@ class LocalExposureCalculator:
         tissue_total_mg_L = c_plasma_mg_L * kp
 
         # 3. Interstitial free concentration (Free drug hypothesis: C_ISF,free = C_plasma,free at steady state)
-        # In rapidly perfused organs, interstitial free concentration equals plasma free concentration.
         interstitial_free_nM = plasma_free_nM
 
-        # 4. Intracellular free concentration (incorporates tissue partition Kp for active transport / cellular accumulation)
+        # 4. Intracellular free concentration (incorporates tissue partition Kp for active transport)
         intracellular_free_nM = interstitial_free_nM * float(max(0.05, intracellular_permeability_ratio)) * kp
 
-        # 5. Determine target accessible concentration based on subcellular location
-        if subcellular_location in [
-            SubcellularLocation.PLASMA_MEMBRANE_APICAL,
+        # 5. Luminal free concentration for polarized epithelial cells
+        # In renal proximal tubule, glomerular filtration of unbound drug combined with proximal water
+        # reabsorption establishes an enriched luminal concentration at the apical brush border
+        if organ == OrganType.KIDNEY and "proximal_tubule" in cell_type_id:
+            luminal_free_nM = plasma_free_nM * float(max(0.5, apical_luminal_concentration_factor))
+        elif organ == OrganType.GASTROINTESTINAL:
+            luminal_free_nM = plasma_free_nM * 0.8
+        else:
+            luminal_free_nM = interstitial_free_nM
+
+        # 6. Determine target-accessible concentration by physiological access route
+        if subcellular_location == SubcellularLocation.PLASMA_MEMBRANE_APICAL:
+            accessible_nM = luminal_free_nM
+            access_route = "apical_luminal_fluid_exposure"
+        elif subcellular_location in [
             SubcellularLocation.PLASMA_MEMBRANE_BASOLATERAL,
             SubcellularLocation.PLASMA_MEMBRANE_NONPOLARIZED,
         ]:
             accessible_nM = interstitial_free_nM
+            access_route = "peritubular_interstitial_fluid_exposure"
         elif subcellular_location in [
             SubcellularLocation.CYTOPLASM,
             SubcellularLocation.NUCLEUS,
@@ -82,8 +97,10 @@ class LocalExposureCalculator:
             SubcellularLocation.SARCOPLASMIC_RETICULUM,
         ]:
             accessible_nM = intracellular_free_nM
+            access_route = "transcellular_cytosolic_uptake"
         else:
             accessible_nM = interstitial_free_nM
+            access_route = "standard_interstitial_exposure"
 
         return LocalExposureProfile(
             organ=organ,
@@ -93,8 +110,10 @@ class LocalExposureCalculator:
             plasma_free_nM=plasma_free_nM,
             tissue_total_mg_L=tissue_total_mg_L,
             interstitial_free_nM=interstitial_free_nM,
+            luminal_free_nM=luminal_free_nM,
             intracellular_free_nM=intracellular_free_nM,
             target_accessible_conc_nM=accessible_nM,
+            route_of_target_access=access_route,
             partition_coefficient_Kp=kp,
             fu_plasma=fu,
         )

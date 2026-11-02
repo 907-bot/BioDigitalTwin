@@ -377,3 +377,86 @@ class TestMolecularFastAPIEndpoints:
         assert sim["organ"] == "kidney"
         assert sim["functional_modulation_pct"] > 80.0
         assert sim["organ_endpoints"]["urinary_glucose_excretion_g_day"] > 40.0
+
+    def test_unsupported_drug_target_interaction_raises(self, spatial_engine):
+        """Simulating Empagliflozin against ADRB1 (non-target) must raise an unsupported interaction error."""
+        with pytest.raises(ValueError, match="does not target 'ADRB1'"):
+            spatial_engine.simulate_spatial_interaction(
+                organ="heart",
+                cell_type_id="heart_ventricular_cardiomyocyte",
+                target_id="ADRB1",
+                drug_name="Empagliflozin",
+            )
+
+    def test_unknown_expression_produces_indeterminate_result(self, spatial_engine):
+        """Unmeasured target expression in a cell population must produce an explicit indeterminate outcome."""
+        res = spatial_engine.simulate_spatial_interaction(
+            organ="heart",
+            cell_type_id="heart_sinoatrial_pacemaker",
+            target_id="SGLT2", # SGLT2 is unmeasured in sinoatrial pacemaker cells
+            drug_name="Empagliflozin",
+        )
+        assert res.engagement_status == "indeterminate_unknown_expression"
+        assert res.functional_modulation_pct == 0.0
+        assert res.quantitative_change_fold == 1.0
+        assert "indeterminate" in res.summary.lower()
+
+    def test_absent_expression_produces_no_engagement_result(self, spatial_engine):
+        """Target verified as absent (e.g. GLP1R in skeletal myocytes) produces no target engagement."""
+        res = spatial_engine.simulate_spatial_interaction(
+            organ="skeletal_muscle",
+            cell_type_id="skeletal_myocyte",
+            target_id="GLP1R",
+            drug_name="Semaglutide",
+        )
+        assert res.engagement_status == "target_not_expressed"
+        assert res.functional_modulation_pct == 0.0
+        assert "absent" in res.cellular_description.lower()
+
+    def test_cacna1c_amlodipine_pore_blockade_electrophysiology(self, spatial_engine):
+        """Dedicated test for CACNA1C Cav1.2 channel blockade with Amlodipine."""
+        res = spatial_engine.simulate_spatial_interaction(
+            organ="vasculature",
+            cell_type_id="vascular_smooth_muscle",
+            target_id="CACNA1C",
+            drug_name="Amlodipine",
+            plasma_concentration_mg_L=0.015, # ~15 ng/mL therapeutic steady-state
+        )
+        assert res.target_id == "CACNA1C"
+        assert res.target_class == "ion_channel"
+        assert res.modulation_type == "pore_blockade"
+        assert res.functional_modulation_pct > 30.0
+        # Second messenger Ca2+ attenuation
+        assert res.second_messengers["cytosolic_Ca2_uM"] < 0.08
+        assert res.second_messengers["MLCK_activity_fraction"] < 0.16
+        assert res.organ_endpoints["vasodilatory_response"] == "systemic_arteriolar_relaxation"
+
+    def test_sglt2_gfr_dependent_continuous_filtration(self, spatial_engine):
+        """Dynamic GFR affects filtered glucose load and glucosuria output continuously."""
+        res_normal = spatial_engine.simulate_spatial_interaction(
+            organ="kidney",
+            cell_type_id="kidney_proximal_tubule_epithelial",
+            target_id="SGLT2",
+            drug_name="Empagliflozin",
+            patient_gfr_mL_min=120.0,
+            current_plasma_glucose_mg_dL=180.0,
+        )
+        res_ckd = spatial_engine.simulate_spatial_interaction(
+            organ="kidney",
+            cell_type_id="kidney_proximal_tubule_epithelial",
+            target_id="SGLT2",
+            drug_name="Empagliflozin",
+            patient_gfr_mL_min=30.0,
+            current_plasma_glucose_mg_dL=180.0,
+        )
+        # Filtered load is 4x higher in normal GFR than CKD stage 4
+        assert res_normal.organ_endpoints["urinary_glucose_excretion_g_day"] > res_ckd.organ_endpoints["urinary_glucose_excretion_g_day"] * 2.5
+
+    def test_get_drugs_endpoint(self, api_client):
+        resp = api_client.get("/molecular/drugs")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["count"] >= 5
+        drug_names = [d["drug_name"] for d in data["drugs"]]
+        assert "Empagliflozin" in drug_names
+        assert "Semaglutide" in drug_names

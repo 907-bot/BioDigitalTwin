@@ -19,6 +19,14 @@ from app.molecular.targets.transporter_models import register_all_transporters
 from app.molecular.targets.ion_channel_models import register_all_ion_channels
 
 
+from app.molecular.targets.drug_registry import (
+    DrugEvidence,
+    DrugTargetInteraction,
+    DrugTargetInteractionRegistry,
+    get_drug_interaction_registry,
+)
+
+
 def initialize_target_registry() -> MolecularTargetRegistry:
     """Initialize and populate the global registry with all curated molecular targets."""
     register_all_receptors()
@@ -43,5 +51,9 @@ __all__ = [
     "MolecularTargetRegistry",
     "get_target_registry",
     "initialize_target_registry",
+    "DrugEvidence",
+    "DrugTargetInteraction",
+    "DrugTargetInteractionRegistry",
+    "get_drug_interaction_registry",
 ]
 

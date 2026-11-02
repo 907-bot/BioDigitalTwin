@@ -28,8 +28,10 @@ class SecondMessengerTransducer:
     """
     @staticmethod
     def compute_steady_state(
-        receptor_family: Optional[str],
-        functional_modulation_pct: float,
+        receptor_family: Optional[str] = None,
+        target_class: Optional[str] = None,
+        target_id: Optional[str] = None,
+        functional_modulation_pct: float = 0.0,
         is_agonist: bool = True,
         is_blocker: bool = False,
     ) -> SecondMessengerState:
@@ -82,10 +84,10 @@ class SecondMessengerTransducer:
             else:
                 ca2 = max(0.05, 0.10 * (1.0 - 0.80 * mod))
 
-        # Check for direct ion channel blockade (e.g. CACNA1C L-type Ca2+ channel)
-        if is_blocker and receptor_family == "ion_channel":
-            ca2 = max(0.04, 0.10 * (1.0 - 0.60 * mod))
-            mlck = max(0.05, 0.20 * (1.0 - 0.65 * mod))
+        # Direct voltage-gated ion channel blockade (e.g. CACNA1C / Cav1.2 L-type Ca2+ channel)
+        if is_blocker and (target_class == "ion_channel" or (target_id and "CACNA" in target_id.upper())):
+            ca2 = max(0.03, 0.10 * (1.0 - 0.70 * mod))
+            mlck = max(0.04, 0.20 * (1.0 - 0.75 * mod))
 
         return SecondMessengerState(
             cAMP_uM=round(cAMP, 4),
